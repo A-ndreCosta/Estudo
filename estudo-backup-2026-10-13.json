@@ -1,0 +1,353 @@
+{
+  "version": 1,
+  "currentSemester": "s1",
+  "theme": null,
+  "semesters": {
+    "s1": {
+      "name": "1º Semestre",
+      "start": "2026-09-01",
+      "end": "2027-01-30"
+    },
+    "s2": {
+      "name": "2º Semestre",
+      "start": "2027-02-01",
+      "end": "2027-06-26"
+    }
+  },
+  "disciplines": [
+    {
+      "id": "d-calculo",
+      "semester": "s1",
+      "name": "Cálculo",
+      "color": "#6366f1",
+      "components": [
+        {
+          "id": "c-calc-teste",
+          "name": "Teste intermédio",
+          "weight": 45,
+          "min": 8
+        },
+        {
+          "id": "c-calc-moodle",
+          "name": "Testes do Moodle",
+          "weight": 5
+        },
+        {
+          "id": "c-calc-freq",
+          "name": "Frequência",
+          "weight": 50,
+          "min": 8
+        }
+      ]
+    },
+    {
+      "id": "d-fad",
+      "semester": "s1",
+      "name": "Fundamentos de Análise de Dados",
+      "color": "#10b981",
+      "components": []
+    },
+    {
+      "id": "d-ia",
+      "semester": "s1",
+      "name": "Introdução à Inteligência Artificial",
+      "color": "#f59e0b",
+      "components": []
+    },
+    {
+      "id": "d-fp",
+      "semester": "s1",
+      "name": "Fundamentos de Programação",
+      "color": "#f43f5e",
+      "components": [
+        {
+          "id": "c-fp-a1",
+          "name": "A1 · Tarefas de Aprendizagem",
+          "weight": 15,
+          "min": 8
+        },
+        {
+          "id": "c-fp-a2",
+          "name": "A2 · ePortfolio",
+          "weight": 15
+        },
+        {
+          "id": "c-fp-a3",
+          "name": "A3 · Projeto em grupo + discussão",
+          "weight": 70,
+          "min": 9.5
+        }
+      ]
+    }
+  ],
+  "grades": [
+    {
+      "id": "g-calc-ta1",
+      "disciplineId": "d-calculo",
+      "componentId": "c-calc-moodle",
+      "name": "TA1",
+      "value": 20
+    },
+    {
+      "id": "g-calc-ta2",
+      "disciplineId": "d-calculo",
+      "componentId": "c-calc-moodle",
+      "name": "TA2",
+      "value": 20
+    },
+    {
+      "id": "g-fad-ea1",
+      "disciplineId": "d-fad",
+      "componentId": null,
+      "name": "Exercício em aula 1",
+      "value": 20
+    },
+    {
+      "id": "g-fad-ea2",
+      "disciplineId": "d-fad",
+      "componentId": null,
+      "name": "Exercício em aula 2",
+      "value": 15
+    },
+    {
+      "id": "g-fad-ea4",
+      "disciplineId": "d-fad",
+      "componentId": null,
+      "name": "Exercício em aula 4",
+      "value": 16
+    },
+    {
+      "id": "g-fp-moodle-u1",
+      "disciplineId": "d-fp",
+      "componentId": "c-fp-a1",
+      "name": "U1 · Prática Parcial",
+      "value": 20
+    },
+    {
+      "id": "g-fp-moodle-u2",
+      "disciplineId": "d-fp",
+      "componentId": "c-fp-a1",
+      "name": "U2 · Prática Parcial",
+      "value": 20
+    },
+    {
+      "id": "g-fp-moodle-u3-p1",
+      "disciplineId": "d-fp",
+      "componentId": "c-fp-a1",
+      "name": "U3 · Prática Parcial - Parte 1",
+      "value": 20
+    },
+    {
+      "id": "g-fp-moodle-u3-p2",
+      "disciplineId": "d-fp",
+      "componentId": "c-fp-a1",
+      "name": "U3 · Prática Parcial - Parte 2",
+      "value": 20
+    },
+    {
+      "id": "g-fp-moodle-u3-p3",
+      "disciplineId": "d-fp",
+      "componentId": "c-fp-a1",
+      "name": "U3 · Prática Parcial - Parte 3",
+      "value": 20
+    },
+    {
+      "id": "g-fp-moodle-u4-q1",
+      "disciplineId": "d-fp",
+      "componentId": "c-fp-a1",
+      "name": "U4 · Quiz - Prática Parcial - Parte 1",
+      "value": 20
+    },
+    {
+      "id": "g-fp-moodle-u4-q2",
+      "disciplineId": "d-fp",
+      "componentId": "c-fp-a1",
+      "name": "U4 · Quiz - Prática Parcial - Parte 2",
+      "value": 20
+    }
+  ],
+  "events": [
+    {
+      "id": "e-calc-ta5",
+      "title": "TA5",
+      "date": "2026-10-27",
+      "time": "16:59",
+      "disciplineId": "d-calculo",
+      "type": "teste"
+    },
+    {
+      "id": "e-fp-d1",
+      "title": "Desafio 1 - GIT",
+      "date": "2026-12-23",
+      "time": "23:59",
+      "disciplineId": "d-fp",
+      "type": "ficha"
+    },
+    {
+      "id": "e-fp-d2",
+      "title": "Desafio 2 - Better Ask Py",
+      "date": "2026-12-23",
+      "time": "23:59",
+      "disciplineId": "d-fp",
+      "type": "ficha"
+    },
+    {
+      "id": "e-fp-d3",
+      "title": "Desafio 3 - Python - a short",
+      "date": "2026-12-23",
+      "time": "23:59",
+      "disciplineId": "d-fp",
+      "type": "ficha"
+    },
+    {
+      "id": "e-ia-mt1",
+      "title": "1.º mini-teste (presencial) · CP1 e CP6",
+      "date": "2026-10-06",
+      "time": "",
+      "disciplineId": "d-ia",
+      "type": "teste"
+    },
+    {
+      "id": "e-ia-mt2",
+      "title": "2.º mini-teste (presencial) · CP4 e CP5",
+      "date": "2026-10-27",
+      "time": "",
+      "disciplineId": "d-ia",
+      "type": "teste"
+    },
+    {
+      "id": "e-ia-mt3",
+      "title": "3.º mini-teste (presencial) · CP2 e CP3",
+      "date": "2026-11-17",
+      "time": "",
+      "disciplineId": "d-ia",
+      "type": "teste"
+    },
+    {
+      "id": "e-ia-mt4",
+      "title": "4.º mini-teste (presencial) · CP7",
+      "date": "2026-12-15",
+      "time": "",
+      "disciplineId": "d-ia",
+      "type": "teste"
+    },
+    {
+      "id": "e-calc-ti",
+      "title": "Teste intermédio (presencial) · 09h30–12h30",
+      "date": "2026-10-27",
+      "time": "09:30",
+      "disciplineId": "d-calculo",
+      "type": "teste"
+    },
+    {
+      "id": "e-fp-t01",
+      "title": "Mini-teste T01 (presencial) · data provisória",
+      "date": "2026-10-26",
+      "time": "",
+      "disciplineId": "d-fp",
+      "type": "teste"
+    },
+    {
+      "id": "e-fp-t02",
+      "title": "Mini-teste T02 (presencial) · data provisória",
+      "date": "2026-11-09",
+      "time": "",
+      "disciplineId": "d-fp",
+      "type": "teste"
+    },
+    {
+      "id": "e-fp-t03",
+      "title": "Mini-teste T03 (presencial) · data provisória",
+      "date": "2026-11-30",
+      "time": "",
+      "disciplineId": "d-fp",
+      "type": "teste"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t-fp-moodle-u4-q3",
+      "title": "Moodle · Quiz - Prática Parcial - Parte 3 (U4 Listas e Matrizes)",
+      "date": "",
+      "disciplineId": "d-fp",
+      "done": false
+    },
+    {
+      "id": "t-fp-moodle-u5",
+      "title": "Moodle · Quiz - Prática Parcial (U5 Procedimentos e Funções)",
+      "date": "",
+      "disciplineId": "d-fp",
+      "done": false
+    },
+    {
+      "id": "t-fp-moodle-u6",
+      "title": "Moodle · Quiz - Prática Parcial (U6 Classes e Objetos)",
+      "date": "",
+      "disciplineId": "d-fp",
+      "done": false
+    },
+    {
+      "id": "t-fp-moodle-u7",
+      "title": "Moodle · Quiz - Prática Parcial (U7 Manipulação de Ficheiros)",
+      "date": "",
+      "disciplineId": "d-fp",
+      "done": false
+    }
+  ],
+  "links": [
+    {
+      "id": "l-calc-aula-01-notas",
+      "disciplineId": "d-calculo",
+      "category": "aulas",
+      "name": "Aula 01 - Notas",
+      "url": "/ficheiros/calculo/aula-01-notas.pdf"
+    },
+    {
+      "id": "l-calc-aula-02-notas",
+      "disciplineId": "d-calculo",
+      "category": "aulas",
+      "name": "Aula 02 - Notas",
+      "url": "/ficheiros/calculo/aula-02-notas.pdf"
+    },
+    {
+      "id": "l-calc-aula-03-notas",
+      "disciplineId": "d-calculo",
+      "category": "aulas",
+      "name": "Aula 03 - Notas",
+      "url": "/ficheiros/calculo/aula-03-notas.pdf"
+    },
+    {
+      "id": "l-calc-serie-01-exercicios",
+      "disciplineId": "d-calculo",
+      "category": "series",
+      "name": "Série 01 - Exercícios",
+      "url": "/ficheiros/calculo/serie-01-exercicios.pdf"
+    },
+    {
+      "id": "l-calc-serie-02-exercicios",
+      "disciplineId": "d-calculo",
+      "category": "series",
+      "name": "Série 02 - Exercícios",
+      "url": "/ficheiros/calculo/serie-02-exercicios.pdf"
+    },
+    {
+      "id": "l-calc-serie-03-exercicios",
+      "disciplineId": "d-calculo",
+      "category": "series",
+      "name": "Série 03 - Exercícios",
+      "url": "/ficheiros/calculo/serie-03-exercicios.pdf"
+    },
+    {
+      "id": "l-calc-serie-04-exercicios",
+      "disciplineId": "d-calculo",
+      "category": "series",
+      "name": "Série 04 - Exercícios",
+      "url": "/ficheiros/calculo/serie-04-exercicios.pdf"
+    }
+  ],
+  "applied": [
+    "u-2026-10-calculo-fp",
+    "u-2026-10-testes-presenciais"
+  ],
+  "collapsedFiles": []
+}

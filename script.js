@@ -469,6 +469,7 @@ $('#settings-disciplines').addEventListener('click', e => {
     state.disciplines = state.disciplines.filter(x => x.id !== d.id);
     state.grades = state.grades.filter(g => g.disciplineId !== d.id);
     state.events = state.events.filter(ev => ev.disciplineId !== d.id);
+    state.links.forEach(l => { if (l.disciplineId === d.id && l.fileId) fileStore.del(l.fileId).catch(() => {}); });
     state.links = state.links.filter(l => l.disciplineId !== d.id);
     state.tasks.forEach(t => { if (t.disciplineId === d.id) t.disciplineId = ''; });
     save(); renderSettings(); renderAll();
@@ -920,12 +921,12 @@ function renderChecklist() {
   fillDisciplineSelect($('#task-form [name="discipline"]'), { empty: true });
 
   const list = tasksForView();
-  const doneN = list.filter(t => t.done).length;
-  $('#task-count').textContent = list.length ? `${doneN}/${list.length} concluídas` : '';
   $('#task-list').innerHTML = list.length ? list.map(taskItem).join('') : '<li class="muted">Sem tarefas para este dia.</li>';
 
   const undated = dayOffset === 0 ? state.tasks.filter(t => !t.date && (!t.done || t.doneDate === todayISO())) : [];
   $('#undated-wrap').hidden = !undated.length;
+  const pending = undated.filter(t => !t.done).length;
+  $('#undated-count').textContent = `· ${pending} por fazer`;
   $('#undated-list').innerHTML = undated.map(taskItem).join('');
 }
 
@@ -943,22 +944,32 @@ $('#task-form').addEventListener('submit', e => {
   const title = String(fd.get('title')).trim();
   if (!title) return;
   const discId = String(fd.get('discipline') || '');
-  const start = String(fd.get('start') || '');
-  const end = String(fd.get('end') || '');
-  if (end && start && end < start) { toast('A data de fim tem de ser igual ou depois do início.'); return; }
-  const t = normalizeTask({
-    id: uid(), title, date: start || (end ? todayISO() : viewDay()), end,
-    disciplineId: findDisc(discId) ? discId : '', done: false
-  });
+  const when = String(fd.get('when'));
+  let date = viewDay(), end = '';
+  if (when === 'none') date = '';
+  else if (when === 'range') {
+    date = String(fd.get('start') || '');
+    end = String(fd.get('end') || '');
+    if (!date || !end) { toast('Escolhe a data de início e a de fim.'); return; }
+    if (end < date) { toast('A data de fim tem de ser igual ou depois do início.'); return; }
+  }
+  const t = normalizeTask({ id: uid(), title, date, end, disciplineId: findDisc(discId) ? discId : '', done: false });
   state.tasks.push(t);
   save();
   f.querySelector('[name="title"]').value = '';
   f.querySelector('[name="start"]').value = '';
   f.querySelector('[name="end"]').value = '';
   f.querySelector('[name="title"]').focus();
+  if (!t.date) toast('Tarefa adicionada a «Sem prazo».');
   if (t.end) toast(`Tarefa adicionada: ${rangeLabel(t)} (aparece no calendário).`);
   renderChecklist();
   renderCalendar();
+});
+
+$('#task-form [name="when"]').addEventListener('change', e => {
+  const range = e.target.value === 'range';
+  $('#task-range').hidden = !range;
+  if (range && !$('#task-form [name="start"]').value) $('#task-form [name="start"]').value = viewDay();
 });
 
 function toggleTask(id, done) {
@@ -971,14 +982,14 @@ function toggleTask(id, done) {
   renderCalendar();
 }
 
-$('#tab-checklist').addEventListener('change', e => {
+$('#checklist-card').addEventListener('change', e => {
   if (e.target.type === 'checkbox' && e.target.dataset.id) toggleTask(e.target.dataset.id, e.target.checked);
 });
 $('#cal-day-events').addEventListener('change', e => {
   if (e.target.dataset.action === 'toggle-task') toggleTask(e.target.dataset.id, e.target.checked);
 });
 
-$('#tab-checklist').addEventListener('click', e => {
+$('#checklist-card').addEventListener('click', e => {
   const edit = e.target.closest('[data-action="edit-task"]');
   if (edit) { openTaskDialog(state.tasks.find(t => t.id === edit.dataset.id)); return; }
   const b = e.target.closest('[data-action="del-task"]');
@@ -1049,7 +1060,7 @@ const CATS = [['aulas', 'Aulas'], ['series', 'Séries'], ['resumos', 'Resumos']]
 // http(s) ou caminho relativo (sem "esquema" tipo javascript:)
 const isSafeUrl = u => typeof u === 'string' && u.trim() !== '' && (/^https?:\/\//i.test(u) || !/^[a-z][a-z0-9+.-]*:/i.test(u.trim()));
 const hostOf = url => {
-  try { return /^https?:/i.test(url) ? new URL(url).hostname.replace(/^www\./, '') : 'ficheiro local'; } catch (e) { return ''; }
+  try { return /^https?:/i.test(url) ? new URL(url).hostname.replace(/^www\./, '') : 'no site'; } catch (e) { return ''; }
 };
 const fileIcon = url => {
   const ext = (url.split(/[?#]/)[0].match(/\.([a-z0-9]+)$/i) || [])[1]?.toLowerCase();
@@ -1088,15 +1099,19 @@ function renderFiles() {
       return `<h4 class="file-cat">${label} <span class="count">${ls.length}</span></h4>
         <div class="stack">${ls.map(l => `
           <div class="file-link">
-            <span class="file-ico" aria-hidden="true">${fileIcon(l.url)}</span>
-            <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.name)}</a>
-            <span class="muted host">${esc(hostOf(l.url))}</span>
+            <span class="file-ico" aria-hidden="true">${fileIcon(l.fileId ? l.fileName || l.name : l.url)}</span>
+            ${l.fileId
+              ? `<a href="${esc(blobUrls.get(l.fileId) || '#')}" target="_blank" rel="noopener" data-action="open-file" data-id="${esc(l.id)}">${esc(l.name)}</a>
+                 <span class="muted host">${esc(fmtSize(l.size))}</span>
+                 <button type="button" class="icon-btn" data-action="download-file" data-id="${esc(l.id)}" aria-label="Descarregar ${esc(l.name)}">⤓</button>`
+              : `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.name)}</a>
+                 <span class="muted host">${esc(hostOf(l.url))}</span>`}
             <button type="button" class="icon-btn danger" data-action="del-link" data-id="${esc(l.id)}" aria-label="Apagar ${esc(l.name)}">✕</button>
           </div>`).join('')}</div>`;
     }).join('');
     const counts = CATS.map(([key, label]) => [label, all.filter(l => l.category === key).length]).filter(x => x[1]);
     return `
-      <article class="card file-group${open ? ' open' : ''}" style="--c:${isHex(d.color) ? d.color : DEFAULT_COLOR}">
+      <article class="card file-group${open ? ' open' : ''}" data-disc="${esc(d.id)}" style="--c:${isHex(d.color) ? d.color : DEFAULT_COLOR}">
         <button type="button" class="file-head" data-action="toggle-disc" data-id="${esc(d.id)}" aria-expanded="${open}" aria-controls="files-${esc(d.id)}">
           <span class="dot"></span>
           <span class="file-title">${esc(d.name)}</span>
@@ -1109,6 +1124,7 @@ function renderFiles() {
       </article>`;
   }).join('');
   box.innerHTML = html || '<div class="card empty">Nenhum ficheiro corresponde à pesquisa.</div>';
+  loadBlobUrls();
 }
 
 $('#link-form').addEventListener('submit', e => {
@@ -1145,9 +1161,17 @@ $('#files-list').addEventListener('click', e => {
     renderFiles();
     return;
   }
+  const open = e.target.closest('[data-action="open-file"], [data-action="download-file"]');
+  if (open) {
+    // o link já aponta para o ficheiro; só intervém se ainda não estiver carregado
+    if (open.dataset.action === 'open-file' && open.getAttribute('href') !== '#') return;
+    e.preventDefault(); openStoredFile(open.dataset.id, true); return;
+  }
   const b = e.target.closest('[data-action="del-link"]');
   if (!b) return;
-  if (!confirm('Apagar este link?')) return;
+  const link = state.links.find(l => l.id === b.dataset.id);
+  if (!link || !confirm(link.fileId ? 'Apagar este ficheiro?' : 'Apagar este link?')) return;
+  if (link.fileId) fileStore.del(link.fileId).catch(() => {});
   state.links = state.links.filter(l => l.id !== b.dataset.id);
   save();
   renderFiles();
@@ -1163,6 +1187,146 @@ $('#files-collapse').addEventListener('click', () => {
   state.ui.collapsedFiles = [...new Set(state.ui.collapsedFiles.concat([...semDiscIds()]))];
   save(); renderFiles();
 });
+/* ==========================================================
+   FICHEIROS GUARDADOS NO NAVEGADOR (IndexedDB)
+   - Arrastar para a zona ou para cima de uma disciplina.
+   - Ficam só neste navegador/dispositivo (não vão no backup).
+   ========================================================== */
+const fmtSize = n => (!Number.isFinite(n) ? '' : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1).replace('.', ',')} MB`);
+
+const fileStore = (() => {
+  let dbp;
+  const db = () => dbp || (dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('estudo-ficheiros', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('files');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  }));
+  const run = (mode, fn) => db().then(d => new Promise((res, rej) => {
+    const tx = d.transaction('files', mode);
+    const req = fn(tx.objectStore('files'));
+    tx.oncomplete = () => res(req && req.result);
+    tx.onerror = tx.onabort = () => rej(tx.error);
+  }));
+  return {
+    put: (id, blob) => run('readwrite', st => st.put(blob, id)),
+    get: id => run('readonly', st => st.get(id)),
+    del: id => {
+      if (blobUrls.get(id)) URL.revokeObjectURL(blobUrls.get(id));
+      blobUrls.delete(id);
+      return run('readwrite', st => st.delete(id));
+    }
+  };
+})();
+
+async function addFiles(files, discId, category) {
+  if (!files.length) return;
+  if (!findDisc(discId)) { toast('Cria primeiro uma disciplina em ⚙ Definições.'); return; }
+  if (!window.indexedDB) { toast('Este navegador não permite guardar ficheiros.'); return; }
+  let ok = 0;
+  for (const f of files) {
+    if (!f.size && !f.type) continue; // pastas
+    const id = uid();
+    try {
+      await fileStore.put(id, f);
+      state.links.push({
+        id, disciplineId: discId, category, name: f.name.replace(/\.[^.]+$/, '') || f.name,
+        url: '', fileId: id, fileName: f.name, size: f.size, mime: f.type || ''
+      });
+      ok++;
+    } catch (err) {
+      console.warn(err);
+      toast(`Não foi possível guardar «${f.name}» (espaço cheio?).`);
+    }
+  }
+  if (!ok) return;
+  state.ui.collapsedFiles = state.ui.collapsedFiles.filter(x => x !== discId);
+  save();
+  renderFiles();
+  toast(`${ok} ficheiro(s) guardado(s) em ${discName(discId)} · ${CATS.find(c => c[0] === category)[1]}.`);
+}
+
+// URLs (blob:) dos ficheiros guardados, para os links abrirem diretamente
+const blobUrls = new Map();
+async function loadBlobUrls() {
+  for (const l of state.links) {
+    if (!l.fileId || blobUrls.has(l.fileId)) continue;
+    let blob = null;
+    try { blob = await fileStore.get(l.fileId); } catch (e) {}
+    if (!blob) { blobUrls.set(l.fileId, ''); continue; }
+    const url = URL.createObjectURL(blob);
+    blobUrls.set(l.fileId, url);
+    $$(`[data-action="open-file"][data-id="${CSS.escape(l.id)}"]`).forEach(a => { a.href = url; });
+  }
+}
+
+async function openStoredFile(linkId, download) {
+  const l = state.links.find(x => x.id === linkId);
+  if (!l) return;
+  // abre já a janela (senão o bloqueador de pop-ups trava-a depois do await)
+  const win = download ? null : window.open('', '_blank');
+  let blob;
+  try { blob = await fileStore.get(l.fileId); } catch (e) { blob = null; }
+  if (!blob) {
+    if (win) win.close();
+    toast('Este ficheiro não está guardado neste navegador.');
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  if (download || !win) {
+    const a = document.createElement('a');
+    a.href = url; a.download = l.fileName || l.name;
+    document.body.appendChild(a); a.click(); a.remove();
+  } else {
+    win.location.href = url;
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+const linkForm = $('#link-form');
+const dropzone = $('#dropzone');
+const formTarget = () => [String(linkForm.elements['discipline'].value), String(linkForm.elements['category'].value)];
+
+dropzone.addEventListener('click', () => $('#file-input').click());
+dropzone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#file-input').click(); } });
+$('#file-input').addEventListener('change', e => {
+  const files = [...e.target.files];
+  e.target.value = '';
+  addFiles(files, ...formTarget());
+});
+
+// arrastar: para a zona (usa disciplina/categoria do formulário) ou para cima de uma disciplina
+const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+let dragDepth = 0;
+document.addEventListener('dragenter', e => {
+  if (!hasFiles(e) || !$('#tab-files').classList.contains('active')) return;
+  dragDepth++;
+  document.body.classList.add('dragging-files');
+});
+document.addEventListener('dragleave', e => {
+  if (!hasFiles(e)) return;
+  if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging-files'); }
+});
+document.addEventListener('dragover', e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); // permite largar (e evita o navegador abrir o ficheiro)
+  $$('.drop-over').forEach(x => x.classList.remove('drop-over'));
+  const t = e.target.closest('#dropzone, .file-group');
+  if (t) t.classList.add('drop-over');
+  e.dataTransfer.dropEffect = t ? 'copy' : 'none';
+});
+document.addEventListener('drop', e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragDepth = 0;
+  document.body.classList.remove('dragging-files');
+  $$('.drop-over').forEach(x => x.classList.remove('drop-over'));
+  const files = [...e.dataTransfer.files];
+  const group = e.target.closest('.file-group');
+  if (group) addFiles(files, group.dataset.disc, formTarget()[1]);
+  else if (e.target.closest('#dropzone')) addFiles(files, ...formTarget());
+});
+
 /* ==========================================================
    ARRANQUE
    ========================================================== */

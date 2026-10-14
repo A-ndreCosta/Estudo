@@ -54,8 +54,10 @@ function seedState() {
         { id: 'c-fp-a1', name: 'A1 · Tarefas de Aprendizagem', weight: 15, min: 8 },
         { id: 'c-fp-a2', name: 'A2 · ePortfolio', weight: 15 },
         { id: 'c-fp-a3', name: 'A3 · Projeto em grupo + discussão', weight: 70, min: 9.5 }
-      ])
+      ]),
+      TOT_DISC()
     ],
+    addedTot: true,
     grades: [
       { id: 'g-calc-ta1', disciplineId: 'd-calculo', componentId: 'c-calc-moodle', name: 'TA1', value: 20 },
       { id: 'g-calc-ta2', disciplineId: 'd-calculo', componentId: 'c-calc-moodle', name: 'TA2', value: 20 },
@@ -73,6 +75,8 @@ function seedState() {
     links: []
   };
 }
+
+const TOT_DISC = () => ({ id: 'd-tot', semester: 's1', name: 'TOT', color: '#0ea5e9', components: [] });
 
 /* ---------- Estado + localStorage ---------- */
 /* Tarefa: com dia (date), com início e fim (start+end) ou sem prazo (date vazio). */
@@ -103,6 +107,11 @@ function normalizeState(s) {
   if (!st.semesters || typeof st.semesters !== 'object') st.semesters = seedState().semesters;
   st.disciplines.forEach(d => { if (!Array.isArray(d.components)) d.components = []; });
   st.tasks = st.tasks.map(normalizeTask).filter(Boolean);
+  // acrescenta a disciplina TOT uma única vez (se a apagares, não volta)
+  if (!st.addedTot) {
+    if (st.semesters.s1 && !st.disciplines.some(d => d.id === 'd-tot' || d.name.trim().toUpperCase() === 'TOT')) st.disciplines.push(TOT_DISC());
+    st.addedTot = true;
+  }
   if (!st.semesters[st.currentSemester]) st.currentSemester = Object.keys(st.semesters)[0];
   if (!Number.isFinite(st.updatedAt)) st.updatedAt = 0;
   return st;
@@ -646,11 +655,22 @@ function renderDashboard() {
 
   // próximo "Teste" do semestre selecionado
   const discIds = new Set(semDisciplines().map(d => d.id));
-  const next = state.events
+  const upcoming = state.events
     .filter(ev => ev.type === 'teste' && discIds.has(ev.disciplineId))
     .map(ev => ({ ev, at: eventDateTime(ev) }))
     .filter(x => x.at >= now)
-    .sort((a, b) => a.at - b.at)[0];
+    .sort((a, b) => a.at - b.at);
+  const next = upcoming[0];
+
+  // o teste a seguir: versão pequena, só com os dias que faltam
+  const after = upcoming[1];
+  $('#next-test').hidden = !after;
+  if (after) {
+    const days = daysBetween(todayISO(), after.ev.date);
+    $('#next-test').style.setProperty('--c', discColor(after.ev.disciplineId));
+    $('#next-test-title').textContent = `${after.ev.title} · ${discName(after.ev.disciplineId)}`;
+    $('#next-test-days').textContent = days === 0 ? 'hoje' : days === 1 ? 'amanhã' : `faltam ${days} dias`;
+  }
 
   if (next) {
     const diff = next.at - now;

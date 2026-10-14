@@ -2,6 +2,7 @@
    Estudo · Dashboard — script.js
    Núcleo (estado, tema, semestres, definições, exportar/importar)
    + Notas e Médias + Dashboard + Calendário + Checklist + Ficheiros.
+   A sincronização na nuvem está em sync.js.
    ========================================================== */
 'use strict';
 
@@ -18,6 +19,7 @@ const num = n => String(n).replace('.', ',');
 const isHex = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
 const mean = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
 const DEFAULT_COLOR = '#6366f1';
+const isISODate = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
 
 let toastTimer;
 function toast(msg) {
@@ -33,6 +35,7 @@ function seedState() {
   const s1 = (id, name, color, components = []) => ({ id, semester: 's1', name, color, components });
   return {
     version: 1,
+    updatedAt: 0, // 0 = nunca alterado (dados iniciais)
     currentSemester: 's1',
     theme: null, // null = segue o sistema; 'light' | 'dark' = escolha manual
     semesters: {
@@ -67,43 +70,50 @@ function seedState() {
       { id: 'e-fp-d3', title: 'Desafio 3 - Python - a short', date: '2026-12-23', time: '23:59', disciplineId: 'd-fp', type: 'ficha' }
     ],
     tasks: [],
-    links: [],
-    ui: { collapsedFiles: [] }
+    links: []
   };
 }
 
-/* Tarefas: "date" = início (ou dia da tarefa), "end" = fim opcional.
-   Aceita também "start" como sinónimo de "date". Sem data → tarefa sem dia. */
-const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+/* ---------- Estado + localStorage ---------- */
+/* Tarefa: com dia (date), com início e fim (start+end) ou sem prazo (date vazio). */
 function normalizeTask(t) {
-  if (!t || typeof t !== 'object') return t;
-  if (!ISO_RE.test(t.date || '') && ISO_RE.test(t.start || '')) t.date = t.start;
-  delete t.start;
-  if (!ISO_RE.test(t.date || '')) t.date = '';
-  if (!ISO_RE.test(t.end || '') || !t.date || t.end < t.date) delete t.end;
-  return t;
+  if (!t || typeof t.title !== 'string') return null;
+  const start = isISODate(t.start) ? t.start : (isISODate(t.startDate) ? t.startDate : '');
+  const end = isISODate(t.end) ? t.end : (isISODate(t.endDate) ? t.endDate : '');
+  const out = {
+    id: typeof t.id === 'string' && t.id ? t.id : uid(),
+    title: t.title,
+    disciplineId: typeof t.disciplineId === 'string' ? t.disciplineId : '',
+    done: !!t.done,
+    date: ''
+  };
+  if (isISODate(t.doneDate)) out.doneDate = t.doneDate;
+  if (start && end && start <= end) { out.start = start; out.end = end; }
+  else out.date = isISODate(t.date) ? t.date : (end || '');
+  return out;
 }
 
-/* ---------- Estado + localStorage ---------- */
+function normalizeState(s) {
+  const st = Object.assign({
+    version: 1, updatedAt: 0, currentSemester: 's1', theme: null,
+    semesters: seedState().semesters,
+    disciplines: [], grades: [], events: [], tasks: [], links: []
+  }, s);
+  ['disciplines', 'grades', 'events', 'tasks', 'links'].forEach(k => { if (!Array.isArray(st[k])) st[k] = []; });
+  if (!st.semesters || typeof st.semesters !== 'object') st.semesters = seedState().semesters;
+  st.disciplines.forEach(d => { if (!Array.isArray(d.components)) d.components = []; });
+  st.tasks = st.tasks.map(normalizeTask).filter(Boolean);
+  if (!st.semesters[st.currentSemester]) st.currentSemester = Object.keys(st.semesters)[0];
+  if (!Number.isFinite(st.updatedAt)) st.updatedAt = 0;
+  return st;
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const s = JSON.parse(raw);
-      if (s && typeof s === 'object') {
-        const st = Object.assign({
-          version: 1, currentSemester: 's1', theme: null,
-          semesters: seedState().semesters,
-          disciplines: [], grades: [], events: [], tasks: [], links: []
-        }, s);
-        ['disciplines', 'grades', 'events', 'tasks', 'links'].forEach(k => { if (!Array.isArray(st[k])) st[k] = []; });
-        st.disciplines.forEach(d => { if (!Array.isArray(d.components)) d.components = []; });
-        st.tasks.forEach(normalizeTask);
-        if (!st.ui || typeof st.ui !== 'object') st.ui = {};
-        if (!Array.isArray(st.ui.collapsedFiles)) st.ui.collapsedFiles = [];
-        if (!st.semesters[st.currentSemester]) st.currentSemester = Object.keys(st.semesters)[0];
-        return st;
-      }
+      if (s && typeof s === 'object') return normalizeState(s);
     }
   } catch (e) { console.warn('Não foi possível ler os dados guardados.', e); }
   return seedState();
@@ -111,9 +121,16 @@ function loadState() {
 
 let state = loadState();
 
-function save() {
+// guarda só neste aparelho (tema, semestre escolhido)
+function saveLocal() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch (e) { toast('Não foi possível guardar (armazenamento cheio ou bloqueado).'); }
+}
+// guarda neste aparelho e envia para a nuvem (se tiveres entrado)
+function save() {
+  state.updatedAt = Date.now();
+  saveLocal();
+  if (window.estudoCloud) window.estudoCloud.push();
 }
 
 const semDisciplines = () => state.disciplines.filter(d => d.semester === state.currentSemester);
@@ -131,7 +148,7 @@ const applyTheme = () => { document.documentElement.dataset.theme = currentTheme
 
 $('#theme-toggle').addEventListener('click', () => {
   state.theme = currentTheme() === 'dark' ? 'light' : 'dark';
-  save();
+  saveLocal();
   applyTheme();
 });
 if (darkQuery && darkQuery.addEventListener) {
@@ -162,7 +179,7 @@ function renderSemesterSelect() {
 }
 $('#semester-select').addEventListener('change', e => {
   state.currentSemester = e.target.value;
-  save();
+  saveLocal();
   renderAll();
 });
 
@@ -469,7 +486,6 @@ $('#settings-disciplines').addEventListener('click', e => {
     state.disciplines = state.disciplines.filter(x => x.id !== d.id);
     state.grades = state.grades.filter(g => g.disciplineId !== d.id);
     state.events = state.events.filter(ev => ev.disciplineId !== d.id);
-    state.links.forEach(l => { if (l.disciplineId === d.id && l.fileId) fileStore.del(l.fileId).catch(() => {}); });
     state.links = state.links.filter(l => l.disciplineId !== d.id);
     state.tasks.forEach(t => { if (t.disciplineId === d.id) t.disciplineId = ''; });
     save(); renderSettings(); renderAll();
@@ -569,8 +585,8 @@ function mergeState(inc) {
     grades: g => typeof g.name === 'string' && Number.isFinite(g.value) && g.value >= 0 && g.value <= 20 && discIds.has(g.disciplineId),
     events: ev => typeof ev.title === 'string' && isDate(ev.date) && discIds.has(ev.disciplineId) &&
       ['teste', 'ficha'].includes(ev.type) && (!ev.time || /^\d{2}:\d{2}$/.test(ev.time)),
-    tasks: t => typeof t.title === 'string' && (normalizeTask(t), true),
-    links: l => typeof l.name === 'string' && isSafeUrl(l.url) &&
+    tasks: t => typeof t.title === 'string',
+    links: l => typeof l.name === 'string' && typeof l.url === 'string' && /^https?:\/\//i.test(l.url) &&
       discIds.has(l.disciplineId) && ['aulas', 'series', 'resumos'].includes(l.category)
   };
   for (const [k, ok] of Object.entries(rules)) {
@@ -578,7 +594,8 @@ function mergeState(inc) {
     const ids = new Set(state[k].map(x => x.id));
     inc[k].forEach(x => {
       if (x && typeof x === 'object' && typeof x.id === 'string' && !ids.has(x.id) && ok(x)) {
-        state[k].push(x); ids.add(x.id); added++;
+        const item = k === 'tasks' ? normalizeTask(x) : x;
+        if (item) { state[k].push(item); ids.add(x.id); added++; }
       }
     });
   }
@@ -668,32 +685,35 @@ function renderDashboard() {
 
 /* ==========================================================
    CALENDÁRIO
-   - Eventos (testes/fichas) num dia.
-   - Tarefas com início E fim aparecem como faixa em todos
-     os dias desse intervalo (as sem fim não entram aqui).
    ========================================================== */
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 let calSelected = todayISO();
 
-const semDiscIds = () => new Set(semDisciplines().map(d => d.id));
 const semEvents = () => {
-  const ids = semDiscIds();
+  const ids = new Set(semDisciplines().map(d => d.id));
   return state.events.filter(ev => ids.has(ev.disciplineId));
 };
-// tarefas com intervalo (início e fim) do semestre atual (ou sem disciplina)
-const rangedTasks = () => {
-  const ids = semDiscIds();
-  return state.tasks.filter(t => t.date && t.end && (!t.disciplineId || ids.has(t.disciplineId)));
-};
 const sortEvents = (a, b) => (a.time || '').localeCompare(b.time || '') || a.title.localeCompare(b.title);
-const sortRanged = (a, b) => a.date.localeCompare(b.date) || a.end.localeCompare(b.end) || a.title.localeCompare(b.title);
-const taskColor = t => (t.disciplineId && findDisc(t.disciplineId) ? discColor(t.disciplineId) : 'var(--muted)');
-const rangeLabel = t => `${fmtDate(t.date)} → ${fmtDate(t.end)}`;
 
 function goToDate(iso) {
   const d = parseISO(iso);
   calSelected = iso; calYear = d.getFullYear(); calMonth = d.getMonth();
+}
+
+const taskColor = t => (t.disciplineId ? discColor(t.disciplineId) : 'var(--muted)');
+
+// tarefas com início e fim, por dia (as "Sem prazo" e as de um só dia não vão para o calendário)
+function rangeTasksByDate() {
+  const ids = new Set(semDisciplines().map(d => d.id));
+  const map = {};
+  state.tasks.forEach(t => {
+    if (!t.start || !t.end) return;
+    if (t.disciplineId && !ids.has(t.disciplineId)) return;
+    let d = t.start, guard = 0;
+    while (d <= t.end && guard++ < 400) { (map[d] = map[d] || []).push(t); d = addDays(d, 1); }
+  });
+  return map;
 }
 
 function renderCalendar() {
@@ -701,8 +721,7 @@ function renderCalendar() {
 
   const byDate = {};
   semEvents().forEach(ev => { (byDate[ev.date] = byDate[ev.date] || []).push(ev); });
-  const ranged = rangedTasks().sort(sortRanged);
-  const tasksOn = iso => ranged.filter(t => t.date <= iso && iso <= t.end);
+  const tByDate = rangeTasksByDate();
 
   const first = new Date(calYear, calMonth, 1);
   const start = new Date(calYear, calMonth, 1 - ((first.getDay() + 6) % 7)); // semana começa à segunda
@@ -712,42 +731,29 @@ function renderCalendar() {
     const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     const iso = toISO(d);
     const evs = (byDate[iso] || []).sort(sortEvents);
-    const ts = tasksOn(iso);
-    const weekStart = i % 7 === 0;
-    const chips = [
-      ...evs.map(ev => `<span class="cal-chip ${ev.type}" style="--c:${discColor(ev.disciplineId)}">${esc(ev.time ? ev.time + ' ' : '')}${esc(ev.title)}</span>`),
-      ...ts.map(t => {
-        const cls = ['cal-chip', 'range'];
-        if (t.date === iso) cls.push('r-start');
-        if (t.end === iso) cls.push('r-end');
-        if (t.done) cls.push('done');
-        // o título só aparece no início, no começo de cada semana e no dia 1
-        const showTitle = t.date === iso || weekStart || d.getDate() === 1;
-        return `<span class="${cls.join(' ')}" style="--c:${taskColor(t)}" title="${esc(t.title)} · ${rangeLabel(t)}">${showTitle ? esc(t.title) : '&nbsp;'}</span>`;
-      })
-    ];
-    const total = evs.length + ts.length;
+    const tks = tByDate[iso] || [];
+    const total = evs.length + tks.length;
+    const taskChip = t => `<span class="cal-chip ctask${t.done ? ' done' : ''}" style="--c:${taskColor(t)}">${esc((t.done ? '☑ ' : '☐ ') + t.title)}</span>`;
     html += `
       <button type="button" class="cal-cell${d.getMonth() !== calMonth ? ' other' : ''}${iso === today ? ' today' : ''}${iso === calSelected ? ' selected' : ''}"
-              data-date="${iso}" aria-label="${esc(longDate(iso))}${evs.length ? `, ${evs.length} evento(s)` : ''}${ts.length ? `, ${ts.length} tarefa(s)` : ''}">
+              data-date="${iso}" aria-label="${esc(longDate(iso))}${total ? `, ${total} item(ns)` : ''}">
         <span class="cal-num">${d.getDate()}</span>
-        <span class="cal-dots">${evs.slice(0, 4).map(ev => `<span class="cal-dot ${ev.type}" style="--c:${discColor(ev.disciplineId)}"></span>`).join('')}</span>
-        ${ts.length ? `<span class="cal-bars">${ts.slice(0, 3).map(t => `<span class="cal-bar${t.date === iso ? ' r-start' : ''}${t.end === iso ? ' r-end' : ''}${t.done ? ' done' : ''}" style="--c:${taskColor(t)}"></span>`).join('')}</span>` : ''}
-        ${chips.slice(0, 3).join('')}
+        <span class="cal-dots">${evs.slice(0, 4).map(ev => `<span class="cal-dot ${ev.type}" style="--c:${discColor(ev.disciplineId)}"></span>`).join('')}${tks.slice(0, Math.max(0, 4 - evs.length)).map(t => `<span class="cal-dot ctask" style="--c:${taskColor(t)}"></span>`).join('')}</span>
+        ${evs.slice(0, 3).map(ev => `<span class="cal-chip ${ev.type}" style="--c:${discColor(ev.disciplineId)}">${esc(ev.time ? ev.time + ' ' : '')}${esc(ev.title)}</span>`).join('')}${tks.slice(0, Math.max(0, 3 - evs.length)).map(taskChip).join('')}
         ${total > 3 ? `<span class="cal-chip-more">+${total - 3}</span>` : ''}
       </button>`;
   }
   $('#cal-grid').innerHTML = html;
 
   $('#cal-legend').innerHTML = semDisciplines()
-    .map(d => `<span><i class="dot" style="--c:${isHex(d.color) ? d.color : DEFAULT_COLOR}"></i>${esc(d.name)}</span>`).join('') +
-    '<span><i class="legend-bar"></i>Tarefa com início e fim</span>';
+    .map(d => `<span><i class="dot" style="--c:${isHex(d.color) ? d.color : DEFAULT_COLOR}"></i>${esc(d.name)}</span>`).join('');
 
   // eventos e tarefas do dia selecionado
-  $('#cal-selected-title').textContent = `Dia · ${longDate(calSelected)}`;
+  $('#cal-selected-title').textContent = `Eventos · ${longDate(calSelected)}`;
   const dayEvs = (byDate[calSelected] || []).sort(sortEvents);
-  const dayTasks = tasksOn(calSelected);
-  const evHtml = dayEvs.map(ev => `
+  const dayTasks = tByDate[calSelected] || [];
+  $('#cal-day-events').innerHTML = (dayEvs.length || dayTasks.length)
+    ? dayEvs.map(ev => `
     <li class="event-item" style="--c:${discColor(ev.disciplineId)}">
       <div class="grow">
         <div class="title">${esc(ev.title)}</div>
@@ -756,24 +762,15 @@ function renderCalendar() {
       <span class="type-badge">${typeLabel(ev.type)}</span>
       <button type="button" class="icon-btn" data-action="edit-event" data-id="${esc(ev.id)}" aria-label="Editar ${esc(ev.title)}">✎</button>
       <button type="button" class="icon-btn danger" data-action="del-event" data-id="${esc(ev.id)}" aria-label="Apagar ${esc(ev.title)}">✕</button>
-    </li>`).join('');
-  const taskHtml = dayTasks.map(t => {
-    const total = daysBetween(t.date, t.end) + 1;
-    const n = daysBetween(t.date, calSelected) + 1;
-    const late = isLate(t);
-    return `
-    <li class="event-item task-range${t.done ? ' done' : ''}" style="--c:${taskColor(t)}">
-      <input type="checkbox" data-action="toggle-task" data-id="${esc(t.id)}"${t.done ? ' checked' : ''} aria-label="Concluir: ${esc(t.title)}">
+    </li>`).join('') + dayTasks.map(t => `
+    <li class="event-item${t.done ? ' is-done' : ''}" style="--c:${taskColor(t)}">
       <div class="grow">
         <div class="title">${esc(t.title)}</div>
-        <div class="muted">${rangeLabel(t)} · dia ${n} de ${total}${t.disciplineId && findDisc(t.disciplineId) ? ' · ' + esc(discName(t.disciplineId)) : ''}${late ? ' · <span class="badge-late">Atrasada</span>' : ''}</div>
-        <div class="mini-progress"><span style="width:${Math.round((n / total) * 100)}%"></span></div>
+        <div class="muted">${fmtDate(t.start)} → ${fmtDate(t.end)}${t.disciplineId && findDisc(t.disciplineId) ? ' · ' + esc(discName(t.disciplineId)) : ''}</div>
       </div>
       <span class="type-badge">Tarefa</span>
-      <button type="button" class="icon-btn" data-action="edit-task" data-id="${esc(t.id)}" aria-label="Editar ${esc(t.title)}">✎</button>
-    </li>`;
-  }).join('');
-  $('#cal-day-events').innerHTML = evHtml + taskHtml || '<li class="muted">Nada marcado neste dia.</li>';
+    </li>`).join('')
+    : '<li class="muted">Sem eventos neste dia.</li>';
 }
 
 $('#cal-prev').addEventListener('click', () => {
@@ -790,13 +787,6 @@ $('#cal-grid').addEventListener('click', e => {
   if (!c) return;
   goToDate(c.dataset.date);
   renderCalendar();
-});
-// setas do teclado mudam de mês quando o calendário está visível
-document.addEventListener('keydown', e => {
-  if (!$('#tab-calendar').classList.contains('active') || $('dialog[open]')) return;
-  if (/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || '')) return;
-  if (e.key === 'ArrowLeft') $('#cal-prev').click();
-  else if (e.key === 'ArrowRight') $('#cal-next').click();
 });
 
 /* --- diálogo de evento (criar / editar / apagar) --- */
@@ -865,51 +855,46 @@ $('#cal-day-events').addEventListener('click', e => {
 
 /* ==========================================================
    CHECKLIST DIÁRIO (Ontem / Hoje / Amanhã)
-   - Tarefas com início e fim aparecem em todos os dias do
-     intervalo; só ficam atrasadas depois do dia de fim.
-   - As tarefas por fazer de dias anteriores passam
-     automaticamente para "Hoje", com aviso a vermelho.
-   - Tarefas sem data ficam numa secção própria em "Hoje".
+   - Tarefa com dia: aparece nesse dia; se ficar por fazer, passa
+     para "Hoje" com aviso a vermelho.
+   - Tarefa com início e fim: aparece em todos os dias do intervalo
+     (e também no calendário).
+   - Tarefa "Sem prazo": lista à parte, nunca fica atrasada.
    ========================================================== */
 let dayOffset = 0;
 const viewDay = () => addDays(todayISO(), dayOffset);
-const taskEnd = t => t.end || t.date;
-const isLate = t => !t.done && !!t.date && taskEnd(t) < todayISO();
-const coversDay = (t, day) => !!t.date && t.date <= day && day <= taskEnd(t);
+const isRange = t => !!(t.start && t.end);
+const isBacklog = t => !isRange(t) && !t.date;
+const dueDate = t => (isRange(t) ? t.end : t.date);
+const isLate = t => !t.done && !!dueDate(t) && dueDate(t) < todayISO();
+const coversDay = (t, day) => (isRange(t) ? t.start <= day && day <= t.end : t.date === day);
 
 function tasksForView() {
   const day = viewDay(), today = todayISO();
-  let list = state.tasks.filter(t => coversDay(t, day));
+  let list = state.tasks.filter(t => !isBacklog(t) && coversDay(t, day));
   if (dayOffset === 0) {
-    // atrasadas por fazer + as que foram concluídas hoje (para não desaparecerem ao marcar)
-    list = list.concat(state.tasks.filter(t => t.date && taskEnd(t) < today && (!t.done || t.doneDate === today)));
+    // atrasadas por fazer + as concluídas hoje (para não desaparecerem ao marcar)
+    list = list.concat(state.tasks.filter(t =>
+      !isBacklog(t) && !coversDay(t, day) && dueDate(t) < today && (!t.done || t.doneDate === today)));
   }
   const rank = t => (isLate(t) ? 0 : t.done ? 2 : 1);
-  return list.sort((a, b) => rank(a) - rank(b) || taskEnd(a).localeCompare(taskEnd(b)) || a.title.localeCompare(b.title));
+  return list.sort((a, b) => rank(a) - rank(b) || dueDate(a).localeCompare(dueDate(b)));
 }
 
 function taskItem(t) {
-  const today = todayISO();
   const late = isLate(t);
+  const n = late ? daysBetween(dueDate(t), todayISO()) : 0;
   const bits = [];
   if (t.disciplineId && findDisc(t.disciplineId)) bits.push(esc(discName(t.disciplineId)));
-  if (t.end) {
-    const left = daysBetween(today, t.end);
-    bits.push(rangeLabel(t) + (!t.done && !late && t.date <= today
-      ? (left === 0 ? ' · <strong>termina hoje</strong>' : ` · faltam ${left} ${left === 1 ? 'dia' : 'dias'}`) : ''));
-  }
-  if (late) {
-    const n = daysBetween(taskEnd(t), today);
-    bits.push(`<span class="badge-late">Atrasada há ${n} ${n === 1 ? 'dia' : 'dias'}</span>`);
-  }
+  if (isRange(t)) bits.push(`${fmtDate(t.start)} → ${fmtDate(t.end)}`);
+  if (late) bits.push(`<span class="badge-late">Atrasada desde ${n} ${n === 1 ? 'dia' : 'dias'}</span>`);
   return `
-    <li class="task${t.done ? ' done' : ''}${late ? ' late' : ''}" style="--c:${t.disciplineId ? discColor(t.disciplineId) : 'var(--border)'}">
+    <li class="task${t.done ? ' done' : ''}" style="--c:${t.disciplineId ? discColor(t.disciplineId) : 'var(--border)'}">
       <input type="checkbox" data-id="${esc(t.id)}"${t.done ? ' checked' : ''} aria-label="Concluir: ${esc(t.title)}">
       <div class="grow">
         <span class="title">${esc(t.title)}</span>
         ${bits.length ? `<small>${bits.join(' · ')}</small>` : ''}
       </div>
-      <button type="button" class="icon-btn" data-action="edit-task" data-id="${esc(t.id)}" aria-label="Editar ${esc(t.title)}">✎</button>
       <button type="button" class="icon-btn danger" data-action="del-task" data-id="${esc(t.id)}" aria-label="Apagar ${esc(t.title)}">✕</button>
     </li>`;
 }
@@ -923,11 +908,12 @@ function renderChecklist() {
   const list = tasksForView();
   $('#task-list').innerHTML = list.length ? list.map(taskItem).join('') : '<li class="muted">Sem tarefas para este dia.</li>';
 
-  const undated = dayOffset === 0 ? state.tasks.filter(t => !t.date && (!t.done || t.doneDate === todayISO())) : [];
-  $('#undated-wrap').hidden = !undated.length;
-  const pending = undated.filter(t => !t.done).length;
-  $('#undated-count').textContent = `· ${pending} por fazer`;
-  $('#undated-list').innerHTML = undated.map(taskItem).join('');
+  const bl = state.tasks.filter(isBacklog).sort((a, b) => Number(a.done) - Number(b.done));
+  const open = bl.filter(t => !t.done).length;
+  $('#backlog').innerHTML = bl.length ? `
+    <h3 class="backlog-title">Sem prazo · ${open} por fazer</h3>
+    <p class="muted">Para fazer quando quiseres — não ficam atrasadas.</p>
+    <ul class="list">${bl.map(taskItem).join('')}</ul>` : '';
 }
 
 $('#day-nav').addEventListener('click', e => {
@@ -937,195 +923,117 @@ $('#day-nav').addEventListener('click', e => {
   renderChecklist();
 });
 
-$('#task-form').addEventListener('submit', e => {
-  e.preventDefault();
-  const f = e.target;
-  const fd = new FormData(f);
-  const title = String(fd.get('title')).trim();
-  if (!title) return;
-  const discId = String(fd.get('discipline') || '');
-  const when = String(fd.get('when'));
-  let date = viewDay(), end = '';
-  if (when === 'none') date = '';
-  else if (when === 'range') {
-    date = String(fd.get('start') || '');
-    end = String(fd.get('end') || '');
-    if (!date || !end) { toast('Escolhe a data de início e a de fim.'); return; }
-    if (end < date) { toast('A data de fim tem de ser igual ou depois do início.'); return; }
-  }
-  const t = normalizeTask({ id: uid(), title, date, end, disciplineId: findDisc(discId) ? discId : '', done: false });
-  state.tasks.push(t);
-  save();
-  f.querySelector('[name="title"]').value = '';
-  f.querySelector('[name="start"]').value = '';
-  f.querySelector('[name="end"]').value = '';
-  f.querySelector('[name="title"]').focus();
-  if (!t.date) toast('Tarefa adicionada a «Sem prazo».');
-  if (t.end) toast(`Tarefa adicionada: ${rangeLabel(t)} (aparece no calendário).`);
-  renderChecklist();
-  renderCalendar();
-});
-
-$('#task-form [name="when"]').addEventListener('change', e => {
+const taskForm = $('#task-form');
+taskForm.elements['mode'].addEventListener('change', e => {
   const range = e.target.value === 'range';
   $('#task-range').hidden = !range;
-  if (range && !$('#task-form [name="start"]').value) $('#task-form [name="start"]').value = viewDay();
+  if (range) {
+    if (!taskForm.elements['start'].value) taskForm.elements['start'].value = viewDay();
+    if (!taskForm.elements['end'].value) taskForm.elements['end'].value = viewDay();
+  }
 });
-
-function toggleTask(id, done) {
-  const t = state.tasks.find(x => x.id === id);
-  if (!t) return;
-  t.done = done;
-  if (t.done) t.doneDate = todayISO(); else delete t.doneDate;
-  save();
-  renderChecklist();
-  renderCalendar();
-}
-
-$('#checklist-card').addEventListener('change', e => {
-  if (e.target.type === 'checkbox' && e.target.dataset.id) toggleTask(e.target.dataset.id, e.target.checked);
-});
-$('#cal-day-events').addEventListener('change', e => {
-  if (e.target.dataset.action === 'toggle-task') toggleTask(e.target.dataset.id, e.target.checked);
-});
-
-$('#checklist-card').addEventListener('click', e => {
-  const edit = e.target.closest('[data-action="edit-task"]');
-  if (edit) { openTaskDialog(state.tasks.find(t => t.id === edit.dataset.id)); return; }
-  const b = e.target.closest('[data-action="del-task"]');
-  if (!b) return;
-  if (!confirm('Apagar esta tarefa?')) return;
-  state.tasks = state.tasks.filter(t => t.id !== b.dataset.id);
-  save();
-  renderChecklist();
-  renderCalendar();
-});
-
-/* --- diálogo de tarefa (editar título, disciplina, início e fim) --- */
-const taskDialog = $('#task-dialog');
-const taskForm = $('#task-edit-form');
-
-function openTaskDialog(t) {
-  if (!t) return;
-  fillDisciplineSelect(taskForm.elements['discipline'], { empty: true });
-  taskForm.elements['taskId'].value = t.id;
-  taskForm.elements['title'].value = t.title;
-  taskForm.elements['start'].value = t.date || '';
-  taskForm.elements['end'].value = t.end || '';
-  taskForm.elements['discipline'].value = t.disciplineId && findDisc(t.disciplineId) ? t.disciplineId : '';
-  openDialog(taskDialog);
-}
-
-$('#cal-day-events').addEventListener('click', e => {
-  const b = e.target.closest('[data-action="edit-task"]');
-  if (b) openTaskDialog(state.tasks.find(t => t.id === b.dataset.id));
-});
-$('#task-cancel').addEventListener('click', () => taskDialog.close());
-taskDialog.addEventListener('click', e => { if (e.target === taskDialog) taskDialog.close(); });
 
 taskForm.addEventListener('submit', e => {
   e.preventDefault();
   const fd = new FormData(taskForm);
-  const t = state.tasks.find(x => x.id === fd.get('taskId'));
-  if (!t) return;
   const title = String(fd.get('title')).trim();
-  const start = String(fd.get('start') || '');
-  const end = String(fd.get('end') || '');
-  if (!title) { toast('A tarefa precisa de um título.'); return; }
-  if (end && !start) { toast('Para ter fim, a tarefa precisa de uma data de início.'); return; }
-  if (end && end < start) { toast('A data de fim tem de ser igual ou depois do início.'); return; }
+  if (!title) return;
   const discId = String(fd.get('discipline') || '');
-  Object.assign(t, { title, date: start, end, disciplineId: findDisc(discId) ? discId : '' });
-  normalizeTask(t);
+  const task = { id: uid(), title, disciplineId: findDisc(discId) ? discId : '', done: false, date: '' };
+  const mode = String(fd.get('mode') || 'day');
+  if (mode === 'day') task.date = viewDay();
+  else if (mode === 'range') {
+    const start = String(fd.get('start')), end = String(fd.get('end'));
+    if (!isISODate(start) || !isISODate(end) || start > end) { toast('Escolhe um início e um fim (o fim não pode ser antes do início).'); return; }
+    task.start = start; task.end = end;
+  }
+  state.tasks.push(task);
   save();
-  taskDialog.close();
-  renderAll();
+  const input = taskForm.elements['title'];
+  input.value = '';
+  input.focus();
+  renderChecklist();
+  if (mode === 'range') renderCalendar();
 });
 
-$('#task-delete').addEventListener('click', () => {
-  const id = taskForm.elements['taskId'].value;
-  if (!id || !confirm('Apagar esta tarefa?')) return;
-  state.tasks = state.tasks.filter(t => t.id !== id);
-  save();
-  taskDialog.close();
-  renderAll();
+['#task-list', '#backlog'].forEach(sel => {
+  $(sel).addEventListener('change', e => {
+    if (e.target.type !== 'checkbox') return;
+    const t = state.tasks.find(x => x.id === e.target.dataset.id);
+    if (!t) return;
+    t.done = e.target.checked;
+    if (t.done) t.doneDate = todayISO(); else delete t.doneDate;
+    save();
+    renderChecklist();
+    renderCalendar();
+  });
+  $(sel).addEventListener('click', e => {
+    const b = e.target.closest('[data-action="del-task"]');
+    if (!b) return;
+    if (!confirm('Apagar esta tarefa?')) return;
+    state.tasks = state.tasks.filter(t => t.id !== b.dataset.id);
+    save();
+    renderChecklist();
+    renderCalendar();
+  });
 });
 
 /* ==========================================================
    REPOSITÓRIO DE FICHEIROS (só links: Drive, Dropbox, …)
-   - Cada disciplina expande/recolhe ao clicar no título
-     (o estado fica guardado).
+   Cada disciplina é uma secção que se recolhe/expande; a escolha
+   fica lembrada neste aparelho.
    ========================================================== */
 const CATS = [['aulas', 'Aulas'], ['series', 'Séries'], ['resumos', 'Resumos']];
-// http(s) ou caminho relativo (sem "esquema" tipo javascript:)
-const isSafeUrl = u => typeof u === 'string' && u.trim() !== '' && (/^https?:\/\//i.test(u) || !/^[a-z][a-z0-9+.-]*:/i.test(u.trim()));
-const hostOf = url => {
-  try { return /^https?:/i.test(url) ? new URL(url).hostname.replace(/^www\./, '') : 'no site'; } catch (e) { return ''; }
-};
-const fileIcon = url => {
-  const ext = (url.split(/[?#]/)[0].match(/\.([a-z0-9]+)$/i) || [])[1]?.toLowerCase();
-  if (ext === 'pdf') return '📄';
-  if (['ppt', 'pptx', 'key'].includes(ext)) return '📊';
-  if (['doc', 'docx', 'odt', 'txt', 'md'].includes(ext)) return '📝';
-  if (['zip', 'rar', '7z'].includes(ext)) return '🗜';
-  if (['py', 'ipynb', 'js', 'java', 'c'].includes(ext)) return '💻';
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) return '🖼';
-  return '🔗';
-};
-let fileQuery = '';
-const isCollapsed = id => state.ui.collapsedFiles.includes(id);
+const hostOf = url => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return ''; } };
+
+const UI_KEY = 'estudo-ui-v1';
+let ui = {};
+try { ui = JSON.parse(localStorage.getItem(UI_KEY)) || {}; } catch (e) { ui = {}; }
+if (!ui.collapsed || typeof ui.collapsed !== 'object') ui.collapsed = {};
+const saveUI = () => { try { localStorage.setItem(UI_KEY, JSON.stringify(ui)); } catch (e) {} };
 
 function renderFiles() {
   fillDisciplineSelect($('#link-form [name="discipline"]'));
   const box = $('#files-list');
   const discs = semDisciplines();
-  $('#files-tools').hidden = !discs.length;
   if (!discs.length) {
     box.innerHTML = '<div class="card empty">Ainda não há disciplinas neste semestre. Adiciona-as em ⚙ Definições.</div>';
     return;
   }
-  const q = fileQuery.trim().toLowerCase();
-  const match = l => !q || l.name.toLowerCase().includes(q) || l.url.toLowerCase().includes(q);
-
-  const html = discs.map(d => {
-    const all = state.links.filter(l => l.disciplineId === d.id);
-    const links = all.filter(match);
-    if (q && !links.length) return '';
-    // ao pesquisar mostra tudo aberto
-    const open = q ? true : !isCollapsed(d.id);
+  box.innerHTML = discs.map(d => {
+    const links = state.links.filter(l => l.disciplineId === d.id);
+    const n = links.length;
     const groups = CATS.map(([key, label]) => {
       const ls = links.filter(l => l.category === key);
       if (!ls.length) return '';
-      return `<h4 class="file-cat">${label} <span class="count">${ls.length}</span></h4>
+      return `<h4 class="file-cat">${label}</h4>
         <div class="stack">${ls.map(l => `
           <div class="file-link">
-            <span class="file-ico" aria-hidden="true">${fileIcon(l.fileId ? l.fileName || l.name : l.url)}</span>
-            ${l.fileId
-              ? `<a href="${esc(blobUrls.get(l.fileId) || '#')}" target="_blank" rel="noopener" data-action="open-file" data-id="${esc(l.id)}">${esc(l.name)}</a>
-                 <span class="muted host">${esc(fmtSize(l.size))}</span>
-                 <button type="button" class="icon-btn" data-action="download-file" data-id="${esc(l.id)}" aria-label="Descarregar ${esc(l.name)}">⤓</button>`
-              : `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.name)}</a>
-                 <span class="muted host">${esc(hostOf(l.url))}</span>`}
+            <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.name)}</a>
+            <span class="muted">${esc(hostOf(l.url))}</span>
             <button type="button" class="icon-btn danger" data-action="del-link" data-id="${esc(l.id)}" aria-label="Apagar ${esc(l.name)}">✕</button>
           </div>`).join('')}</div>`;
     }).join('');
-    const counts = CATS.map(([key, label]) => [label, all.filter(l => l.category === key).length]).filter(x => x[1]);
     return `
-      <article class="card file-group${open ? ' open' : ''}" data-disc="${esc(d.id)}" style="--c:${isHex(d.color) ? d.color : DEFAULT_COLOR}">
-        <button type="button" class="file-head" data-action="toggle-disc" data-id="${esc(d.id)}" aria-expanded="${open}" aria-controls="files-${esc(d.id)}">
+      <details class="card file-group" data-disc="${esc(d.id)}"${ui.collapsed[d.id] ? '' : ' open'} style="--c:${isHex(d.color) ? d.color : DEFAULT_COLOR}">
+        <summary>
           <span class="dot"></span>
-          <span class="file-title">${esc(d.name)}</span>
-          <span class="file-sum">${all.length ? counts.map(([l, n]) => `${n} ${l.toLowerCase()}`).join(' · ') : 'vazio'}</span>
-          <span class="chev" aria-hidden="true">▾</span>
-        </button>
-        <div class="file-body" id="files-${esc(d.id)}"${open ? '' : ' hidden'}>
-          ${groups || '<p class="muted">Ainda sem links.</p>'}
-        </div>
-      </article>`;
+          <h2>${esc(d.name)}</h2>
+          <span class="muted file-count">${n} ${n === 1 ? 'ficheiro' : 'ficheiros'}</span>
+          <span class="chevron" aria-hidden="true">▾</span>
+        </summary>
+        <div class="file-body">${groups || '<p class="muted">Ainda sem links.</p>'}</div>
+      </details>`;
   }).join('');
-  box.innerHTML = html || '<div class="card empty">Nenhum ficheiro corresponde à pesquisa.</div>';
-  loadBlobUrls();
 }
+
+// o evento "toggle" não sobe na árvore: apanha-se na fase de captura
+$('#files-list').addEventListener('toggle', e => {
+  const det = e.target && e.target.closest ? e.target.closest('details.file-group') : null;
+  if (!det) return;
+  if (det.open) delete ui.collapsed[det.dataset.disc]; else ui.collapsed[det.dataset.disc] = true;
+  saveUI();
+}, true);
 
 $('#link-form').addEventListener('submit', e => {
   e.preventDefault();
@@ -1142,7 +1050,6 @@ $('#link-form').addEventListener('submit', e => {
   } catch (err) { toast('O link tem de começar por http:// ou https://'); return; }
   if (!name || !findDisc(discId) || !CATS.some(c => c[0] === category)) { toast('Preenche a disciplina, a categoria e o nome.'); return; }
   state.links.push({ id: uid(), disciplineId: discId, category, name, url });
-  state.ui.collapsedFiles = state.ui.collapsedFiles.filter(id => id !== discId); // mostra onde ficou
   save();
   f.querySelector('[name="name"]').value = '';
   f.querySelector('[name="url"]').value = '';
@@ -1150,181 +1057,12 @@ $('#link-form').addEventListener('submit', e => {
 });
 
 $('#files-list').addEventListener('click', e => {
-  const head = e.target.closest('[data-action="toggle-disc"]');
-  if (head) {
-    if (fileQuery.trim()) return; // durante a pesquisa fica tudo aberto
-    const id = head.dataset.id;
-    state.ui.collapsedFiles = isCollapsed(id)
-      ? state.ui.collapsedFiles.filter(x => x !== id)
-      : state.ui.collapsedFiles.concat(id);
-    save();
-    renderFiles();
-    return;
-  }
-  const open = e.target.closest('[data-action="open-file"], [data-action="download-file"]');
-  if (open) {
-    // o link já aponta para o ficheiro; só intervém se ainda não estiver carregado
-    if (open.dataset.action === 'open-file' && open.getAttribute('href') !== '#') return;
-    e.preventDefault(); openStoredFile(open.dataset.id, true); return;
-  }
   const b = e.target.closest('[data-action="del-link"]');
   if (!b) return;
-  const link = state.links.find(l => l.id === b.dataset.id);
-  if (!link || !confirm(link.fileId ? 'Apagar este ficheiro?' : 'Apagar este link?')) return;
-  if (link.fileId) fileStore.del(link.fileId).catch(() => {});
+  if (!confirm('Apagar este link?')) return;
   state.links = state.links.filter(l => l.id !== b.dataset.id);
   save();
   renderFiles();
-});
-
-$('#files-search').addEventListener('input', e => { fileQuery = e.target.value; renderFiles(); });
-$('#files-expand').addEventListener('click', () => {
-  const ids = new Set(semDiscIds());
-  state.ui.collapsedFiles = state.ui.collapsedFiles.filter(id => !ids.has(id));
-  save(); renderFiles();
-});
-$('#files-collapse').addEventListener('click', () => {
-  state.ui.collapsedFiles = [...new Set(state.ui.collapsedFiles.concat([...semDiscIds()]))];
-  save(); renderFiles();
-});
-/* ==========================================================
-   FICHEIROS GUARDADOS NO NAVEGADOR (IndexedDB)
-   - Arrastar para a zona ou para cima de uma disciplina.
-   - Ficam só neste navegador/dispositivo (não vão no backup).
-   ========================================================== */
-const fmtSize = n => (!Number.isFinite(n) ? '' : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1).replace('.', ',')} MB`);
-
-const fileStore = (() => {
-  let dbp;
-  const db = () => dbp || (dbp = new Promise((res, rej) => {
-    const r = indexedDB.open('estudo-ficheiros', 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('files');
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => rej(r.error);
-  }));
-  const run = (mode, fn) => db().then(d => new Promise((res, rej) => {
-    const tx = d.transaction('files', mode);
-    const req = fn(tx.objectStore('files'));
-    tx.oncomplete = () => res(req && req.result);
-    tx.onerror = tx.onabort = () => rej(tx.error);
-  }));
-  return {
-    put: (id, blob) => run('readwrite', st => st.put(blob, id)),
-    get: id => run('readonly', st => st.get(id)),
-    del: id => {
-      if (blobUrls.get(id)) URL.revokeObjectURL(blobUrls.get(id));
-      blobUrls.delete(id);
-      return run('readwrite', st => st.delete(id));
-    }
-  };
-})();
-
-async function addFiles(files, discId, category) {
-  if (!files.length) return;
-  if (!findDisc(discId)) { toast('Cria primeiro uma disciplina em ⚙ Definições.'); return; }
-  if (!window.indexedDB) { toast('Este navegador não permite guardar ficheiros.'); return; }
-  let ok = 0;
-  for (const f of files) {
-    if (!f.size && !f.type) continue; // pastas
-    const id = uid();
-    try {
-      await fileStore.put(id, f);
-      state.links.push({
-        id, disciplineId: discId, category, name: f.name.replace(/\.[^.]+$/, '') || f.name,
-        url: '', fileId: id, fileName: f.name, size: f.size, mime: f.type || ''
-      });
-      ok++;
-    } catch (err) {
-      console.warn(err);
-      toast(`Não foi possível guardar «${f.name}» (espaço cheio?).`);
-    }
-  }
-  if (!ok) return;
-  state.ui.collapsedFiles = state.ui.collapsedFiles.filter(x => x !== discId);
-  save();
-  renderFiles();
-  toast(`${ok} ficheiro(s) guardado(s) em ${discName(discId)} · ${CATS.find(c => c[0] === category)[1]}.`);
-}
-
-// URLs (blob:) dos ficheiros guardados, para os links abrirem diretamente
-const blobUrls = new Map();
-async function loadBlobUrls() {
-  for (const l of state.links) {
-    if (!l.fileId || blobUrls.has(l.fileId)) continue;
-    let blob = null;
-    try { blob = await fileStore.get(l.fileId); } catch (e) {}
-    if (!blob) { blobUrls.set(l.fileId, ''); continue; }
-    const url = URL.createObjectURL(blob);
-    blobUrls.set(l.fileId, url);
-    $$(`[data-action="open-file"][data-id="${CSS.escape(l.id)}"]`).forEach(a => { a.href = url; });
-  }
-}
-
-async function openStoredFile(linkId, download) {
-  const l = state.links.find(x => x.id === linkId);
-  if (!l) return;
-  // abre já a janela (senão o bloqueador de pop-ups trava-a depois do await)
-  const win = download ? null : window.open('', '_blank');
-  let blob;
-  try { blob = await fileStore.get(l.fileId); } catch (e) { blob = null; }
-  if (!blob) {
-    if (win) win.close();
-    toast('Este ficheiro não está guardado neste navegador.');
-    return;
-  }
-  const url = URL.createObjectURL(blob);
-  if (download || !win) {
-    const a = document.createElement('a');
-    a.href = url; a.download = l.fileName || l.name;
-    document.body.appendChild(a); a.click(); a.remove();
-  } else {
-    win.location.href = url;
-  }
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
-}
-
-const linkForm = $('#link-form');
-const dropzone = $('#dropzone');
-const formTarget = () => [String(linkForm.elements['discipline'].value), String(linkForm.elements['category'].value)];
-
-dropzone.addEventListener('click', () => $('#file-input').click());
-dropzone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#file-input').click(); } });
-$('#file-input').addEventListener('change', e => {
-  const files = [...e.target.files];
-  e.target.value = '';
-  addFiles(files, ...formTarget());
-});
-
-// arrastar: para a zona (usa disciplina/categoria do formulário) ou para cima de uma disciplina
-const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
-let dragDepth = 0;
-document.addEventListener('dragenter', e => {
-  if (!hasFiles(e) || !$('#tab-files').classList.contains('active')) return;
-  dragDepth++;
-  document.body.classList.add('dragging-files');
-});
-document.addEventListener('dragleave', e => {
-  if (!hasFiles(e)) return;
-  if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging-files'); }
-});
-document.addEventListener('dragover', e => {
-  if (!hasFiles(e)) return;
-  e.preventDefault(); // permite largar (e evita o navegador abrir o ficheiro)
-  $$('.drop-over').forEach(x => x.classList.remove('drop-over'));
-  const t = e.target.closest('#dropzone, .file-group');
-  if (t) t.classList.add('drop-over');
-  e.dataTransfer.dropEffect = t ? 'copy' : 'none';
-});
-document.addEventListener('drop', e => {
-  if (!hasFiles(e)) return;
-  e.preventDefault();
-  dragDepth = 0;
-  document.body.classList.remove('dragging-files');
-  $$('.drop-over').forEach(x => x.classList.remove('drop-over'));
-  const files = [...e.dataTransfer.files];
-  const group = e.target.closest('.file-group');
-  if (group) addFiles(files, group.dataset.disc, formTarget()[1]);
-  else if (e.target.closest('#dropzone')) addFiles(files, ...formTarget());
 });
 
 /* ==========================================================
@@ -1338,6 +1076,25 @@ function renderAll() {
   renderFiles();
   renderGrades();
 }
+
+// ---- ligação ao sync.js (nuvem) ----
+function applyRemoteState(remote) {
+  // guarda uma cópia dos dados deste aparelho antes de os substituir
+  try { localStorage.setItem(STORAGE_KEY + '-backup', JSON.stringify(state)); } catch (e) {}
+  state = normalizeState(Object.assign({}, remote, { theme: state.theme, currentSemester: state.currentSemester }));
+  saveLocal();
+  renderAll();
+}
+window.estudoApp = {
+  getState: () => state,
+  applyRemote: applyRemoteState,
+  touch() { state.updatedAt = Date.now(); saveLocal(); return state.updatedAt; },
+  toast
+};
+$('#auth-btn').addEventListener('click', () => {
+  if (window.estudoCloud) window.estudoCloud.toggle();
+  else toast('A sincronização não carregou. Verifica a ligação à internet e recarrega a página.');
+});
 
 // atualiza a contagem decrescente e as datas quando voltas à app
 setInterval(renderDashboard, 30000);

@@ -355,3 +355,17 @@ dialog::backdrop { background: rgba(2, 6, 23, .55); }
 .icon-btn.on { color: var(--success); border-color: var(--success); }
 .icon-btn.err { color: var(--danger); border-color: var(--danger); }
 .icon-btn.busy { opacity: .6; }
+
+/* ---------- Teste a seguir (pequeno) + checklist no Início ---------- */
+.next-test {
+  display: flex; align-items: center; gap: 10px;
+  margin: -6px 0 16px; padding: 10px 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 4px solid var(--c, var(--primary));
+  border-radius: 12px; box-shadow: var(--shadow);
+}
+.next-test .grow { flex: 1; min-width: 0; display: grid; }
+.next-test strong { font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eyebrow-sm { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.next-test-days { flex: none; font-weight: 700; font-size: .85rem; color: var(--c, var(--primary)); }
+#checklist-card .card-title { margin-bottom: 10px; }

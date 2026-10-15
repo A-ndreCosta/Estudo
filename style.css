@@ -369,3 +369,7 @@ dialog::backdrop { background: rgba(2, 6, 23, .55); }
 .eyebrow-sm { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 .next-test-days { flex: none; font-weight: 700; font-size: .85rem; color: var(--c, var(--primary)); }
 #checklist-card .card-title { margin-bottom: 10px; }
+.cal-chip.done { text-decoration: line-through; opacity: .6; }
+.cal-chip.tarefa { border-left-style: dashed; }
+.check-row { display: flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--text); }
+.task .icon-btn { width: 34px; height: 34px; flex-basis: 34px; font-size: .95rem; }

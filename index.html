@@ -240,6 +240,7 @@
           <select name="type">
             <option value="teste">Teste</option>
             <option value="ficha">Ficha</option>
+            <option value="tarefa">Tarefa</option>
           </select>
         </label>
       </div>
@@ -247,6 +248,28 @@
         <button type="button" class="btn btn-danger" id="event-delete" hidden>Apagar</button>
         <span class="spacer"></span>
         <button type="button" class="btn" id="event-cancel">Cancelar</button>
+        <button class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ============ Diálogo: Tarefa ============ -->
+  <dialog id="task-dialog" aria-labelledby="task-dialog-title">
+    <form id="task-edit-form" class="dialog-inner">
+      <h2 id="task-dialog-title">Editar tarefa</h2>
+      <input type="hidden" name="taskId">
+      <label>Título <input name="title" required maxlength="120"></label>
+      <label>Disciplina <select name="discipline"></select></label>
+      <div class="row">
+        <label>Início <input type="date" name="start"></label>
+        <label>Fim <input type="date" name="end"></label>
+      </div>
+      <p class="muted">Com início e fim aparece no calendário. Só com início fica nesse dia. Sem datas fica em «Sem prazo».</p>
+      <label class="check-row"><input type="checkbox" name="done"> Concluída</label>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-danger" id="task-delete">Apagar</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="task-cancel">Cancelar</button>
         <button class="btn btn-primary">Guardar</button>
       </div>
     </form>

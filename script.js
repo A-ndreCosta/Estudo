@@ -593,7 +593,7 @@ function mergeState(inc) {
   const rules = {
     grades: g => typeof g.name === 'string' && Number.isFinite(g.value) && g.value >= 0 && g.value <= 20 && discIds.has(g.disciplineId),
     events: ev => typeof ev.title === 'string' && isDate(ev.date) && discIds.has(ev.disciplineId) &&
-      ['teste', 'ficha'].includes(ev.type) && (!ev.time || /^\d{2}:\d{2}$/.test(ev.time)),
+      EVENT_TYPES.includes(ev.type) && (!ev.time || /^\d{2}:\d{2}$/.test(ev.time)),
     tasks: t => typeof t.title === 'string',
     links: l => typeof l.name === 'string' && typeof l.url === 'string' && /^https?:\/\//i.test(l.url) &&
       discIds.has(l.disciplineId) && ['aulas', 'series', 'resumos'].includes(l.category)
@@ -634,7 +634,8 @@ const eventDateTime = ev => {
 };
 const discColor = id => { const d = findDisc(id); return d && isHex(d.color) ? d.color : 'var(--muted)'; };
 const discName = id => { const d = findDisc(id); return d ? d.name : ''; };
-const typeLabel = t => (t === 'ficha' ? 'Ficha' : 'Teste');
+const EVENT_TYPES = ['teste', 'ficha', 'tarefa'];
+const typeLabel = t => ({ ficha: 'Ficha', tarefa: 'Tarefa' }[t] || 'Teste');
 
 function openDialog(dlg) {
   if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
@@ -759,7 +760,7 @@ function renderCalendar() {
               data-date="${iso}" aria-label="${esc(longDate(iso))}${total ? `, ${total} item(ns)` : ''}">
         <span class="cal-num">${d.getDate()}</span>
         <span class="cal-dots">${evs.slice(0, 4).map(ev => `<span class="cal-dot ${ev.type}" style="--c:${discColor(ev.disciplineId)}"></span>`).join('')}${tks.slice(0, Math.max(0, 4 - evs.length)).map(t => `<span class="cal-dot ctask" style="--c:${taskColor(t)}"></span>`).join('')}</span>
-        ${evs.slice(0, 3).map(ev => `<span class="cal-chip ${ev.type}" style="--c:${discColor(ev.disciplineId)}">${esc(ev.time ? ev.time + ' ' : '')}${esc(ev.title)}</span>`).join('')}${tks.slice(0, Math.max(0, 3 - evs.length)).map(taskChip).join('')}
+        ${evs.slice(0, 3).map(ev => `<span class="cal-chip ${ev.type}${ev.done ? ' done' : ''}" style="--c:${discColor(ev.disciplineId)}">${esc(ev.time ? ev.time + ' ' : '')}${esc(ev.title)}</span>`).join('')}${tks.slice(0, Math.max(0, 3 - evs.length)).map(taskChip).join('')}
         ${total > 3 ? `<span class="cal-chip-more">+${total - 3}</span>` : ''}
       </button>`;
   }
@@ -774,7 +775,8 @@ function renderCalendar() {
   const dayTasks = tByDate[calSelected] || [];
   $('#cal-day-events').innerHTML = (dayEvs.length || dayTasks.length)
     ? dayEvs.map(ev => `
-    <li class="event-item" style="--c:${discColor(ev.disciplineId)}">
+    <li class="event-item${ev.done ? ' is-done' : ''}" style="--c:${discColor(ev.disciplineId)}">
+      <input type="checkbox" data-action="toggle-event" data-id="${esc(ev.id)}"${ev.done ? ' checked' : ''} aria-label="Concluído: ${esc(ev.title)}">
       <div class="grow">
         <div class="title">${esc(ev.title)}</div>
         <div class="muted">${ev.time ? esc(ev.time) + ' · ' : ''}${esc(discName(ev.disciplineId))}</div>
@@ -784,11 +786,14 @@ function renderCalendar() {
       <button type="button" class="icon-btn danger" data-action="del-event" data-id="${esc(ev.id)}" aria-label="Apagar ${esc(ev.title)}">✕</button>
     </li>`).join('') + dayTasks.map(t => `
     <li class="event-item${t.done ? ' is-done' : ''}" style="--c:${taskColor(t)}">
+      <input type="checkbox" data-action="toggle-task" data-id="${esc(t.id)}"${t.done ? ' checked' : ''} aria-label="Concluída: ${esc(t.title)}">
       <div class="grow">
         <div class="title">${esc(t.title)}</div>
         <div class="muted">${fmtDate(t.start)} → ${fmtDate(t.end)}${t.disciplineId && findDisc(t.disciplineId) ? ' · ' + esc(discName(t.disciplineId)) : ''}</div>
       </div>
       <span class="type-badge">Tarefa</span>
+      <button type="button" class="icon-btn" data-action="edit-task" data-id="${esc(t.id)}" aria-label="Editar ${esc(t.title)}">✎</button>
+      <button type="button" class="icon-btn danger" data-action="del-task" data-id="${esc(t.id)}" aria-label="Apagar ${esc(t.title)}">✕</button>
     </li>`).join('')
     : '<li class="muted">Sem eventos neste dia.</li>';
 }
@@ -839,7 +844,7 @@ eventForm.addEventListener('submit', e => {
   const date = String(fd.get('date'));
   const discId = String(fd.get('discipline'));
   if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !findDisc(discId)) { toast('Preenche o título, a data e a disciplina.'); return; }
-  const rec = { title, date, time: String(fd.get('time') || ''), disciplineId: discId, type: fd.get('type') === 'ficha' ? 'ficha' : 'teste' };
+  const rec = { title, date, time: String(fd.get('time') || ''), disciplineId: discId, type: EVENT_TYPES.includes(fd.get('type')) ? String(fd.get('type')) : 'teste' };
   const id = String(fd.get('eventId') || '');
   const existing = id ? state.events.find(x => x.id === id) : null;
   if (existing) Object.assign(existing, rec);
@@ -859,9 +864,32 @@ $('#event-delete').addEventListener('click', () => {
   renderAll();
 });
 
+$('#cal-day-events').addEventListener('change', e => {
+  const cb = e.target;
+  if (cb.dataset.action === 'toggle-event') {
+    const ev = state.events.find(x => x.id === cb.dataset.id);
+    if (!ev) return;
+    if (cb.checked) ev.done = true; else delete ev.done;
+  } else if (cb.dataset.action === 'toggle-task') {
+    const t = state.tasks.find(x => x.id === cb.dataset.id);
+    if (!t) return;
+    setTaskDone(t, cb.checked);
+  } else return;
+  save();
+  renderAll();
+});
+
 $('#cal-day-events').addEventListener('click', e => {
   const edit = e.target.closest('[data-action="edit-event"]');
   const del = e.target.closest('[data-action="del-event"]');
+  const editT = e.target.closest('[data-action="edit-task"]');
+  const delT = e.target.closest('[data-action="del-task"]');
+  if (editT) { openTaskDialog(state.tasks.find(t => t.id === editT.dataset.id)); return; }
+  if (delT) {
+    if (!confirm('Apagar esta tarefa?')) return;
+    state.tasks = state.tasks.filter(t => t.id !== delT.dataset.id);
+    save(); renderAll(); return;
+  }
   if (edit) {
     const ev = state.events.find(x => x.id === edit.dataset.id);
     if (ev) openEventDialog(ev);
@@ -915,8 +943,14 @@ function taskItem(t) {
         <span class="title">${esc(t.title)}</span>
         ${bits.length ? `<small>${bits.join(' · ')}</small>` : ''}
       </div>
+      <button type="button" class="icon-btn" data-action="edit-task" data-id="${esc(t.id)}" aria-label="Editar ${esc(t.title)}">✎</button>
       <button type="button" class="icon-btn danger" data-action="del-task" data-id="${esc(t.id)}" aria-label="Apagar ${esc(t.title)}">✕</button>
     </li>`;
+}
+
+function setTaskDone(t, done) {
+  t.done = done;
+  if (done) t.doneDate = todayISO(); else delete t.doneDate;
 }
 
 function renderChecklist() {
@@ -981,13 +1015,14 @@ taskForm.addEventListener('submit', e => {
     if (e.target.type !== 'checkbox') return;
     const t = state.tasks.find(x => x.id === e.target.dataset.id);
     if (!t) return;
-    t.done = e.target.checked;
-    if (t.done) t.doneDate = todayISO(); else delete t.doneDate;
+    setTaskDone(t, e.target.checked);
     save();
     renderChecklist();
     renderCalendar();
   });
   $(sel).addEventListener('click', e => {
+    const ed = e.target.closest('[data-action="edit-task"]');
+    if (ed) { openTaskDialog(state.tasks.find(t => t.id === ed.dataset.id)); return; }
     const b = e.target.closest('[data-action="del-task"]');
     if (!b) return;
     if (!confirm('Apagar esta tarefa?')) return;
@@ -996,6 +1031,56 @@ taskForm.addEventListener('submit', e => {
     renderChecklist();
     renderCalendar();
   });
+});
+
+/* --- diálogo de tarefa (editar / concluir / apagar) --- */
+const taskDialog = $('#task-dialog');
+const taskEditForm = $('#task-edit-form');
+
+function openTaskDialog(t) {
+  if (!t) return;
+  const f = taskEditForm.elements;
+  fillDisciplineSelect(f['discipline'], { empty: true });
+  f['taskId'].value = t.id;
+  f['title'].value = t.title;
+  f['discipline'].value = t.disciplineId && findDisc(t.disciplineId) ? t.disciplineId : '';
+  f['start'].value = isRange(t) ? t.start : (t.date || '');
+  f['end'].value = isRange(t) ? t.end : '';
+  f['done'].checked = !!t.done;
+  openDialog(taskDialog);
+}
+
+$('#task-cancel').addEventListener('click', () => taskDialog.close());
+taskDialog.addEventListener('click', e => { if (e.target === taskDialog) taskDialog.close(); });
+
+taskEditForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const fd = new FormData(taskEditForm);
+  const t = state.tasks.find(x => x.id === fd.get('taskId'));
+  if (!t) return;
+  const title = String(fd.get('title')).trim();
+  const start = String(fd.get('start') || ''), end = String(fd.get('end') || '');
+  if (!title) { toast('A tarefa precisa de um título.'); return; }
+  if (end && !start) { toast('Para ter fim, a tarefa precisa de início.'); return; }
+  if (start && end && end < start) { toast('O fim não pode ser antes do início.'); return; }
+  const discId = String(fd.get('discipline') || '');
+  t.title = title;
+  t.disciplineId = findDisc(discId) ? discId : '';
+  delete t.start; delete t.end; t.date = '';
+  if (start && end) { t.start = start; t.end = end; } else t.date = start;
+  if (!!fd.get('done') !== !!t.done) setTaskDone(t, !!fd.get('done'));
+  save();
+  taskDialog.close();
+  renderAll();
+});
+
+$('#task-delete').addEventListener('click', () => {
+  const id = taskEditForm.elements['taskId'].value;
+  if (!id || !confirm('Apagar esta tarefa?')) return;
+  state.tasks = state.tasks.filter(t => t.id !== id);
+  save();
+  taskDialog.close();
+  renderAll();
 });
 
 /* ==========================================================

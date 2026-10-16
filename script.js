@@ -58,6 +58,7 @@ function seedState() {
       TOT_DISC()
     ],
     addedTot: true,
+    addedCalcPlan: false,
     grades: [
       { id: 'g-calc-ta1', disciplineId: 'd-calculo', componentId: 'c-calc-moodle', name: 'TA1', value: 20 },
       { id: 'g-calc-ta2', disciplineId: 'd-calculo', componentId: 'c-calc-moodle', name: 'TA2', value: 20 },
@@ -76,6 +77,25 @@ function seedState() {
   };
 }
 
+// plano de estudo para o teste de Cálculo (27/10) — acrescentado uma única vez
+const CALC_PLAN = [
+  ['2026-10-16', 'resto do dia', 3, 'Terminar a Série 2 (do 3d ao fim) e começar a Série 3 (regras de derivação, regra da cadeia)'],
+  ['2026-10-17', 'todo o dia', 5, 'Acabar a Série 3 e fazer a Série 4 (implícita, log/exp, trig. inversas, L’Hôpital)'],
+  ['2026-10-18', 'todo o dia', 5, 'Acabar a Série 4 e começar a Série 5 (monotonia, concavidade, 2.º teste, extremos absolutos)'],
+  ['2026-10-19', 'depois das 14h', 3, 'Acabar a Série 5 e rever a Aula 5'],
+  ['2026-10-20', 'depois das 17h30', 2, 'Miniteste antigo a 18 min, cronometrado, e correção. Rever os exercícios difíceis das Séries 1 e 2 (1b, 1d, 2a, 2c, 2d, 4, 7, 8, 9, 10d)'],
+  ['2026-10-21', 'depois das 16h30', 2, 'Aula 6 / Série 6, se já tiverem saído. Se não, refazer os erros do miniteste e da Série 5'],
+  ['2026-10-22', 'depois das 13h30', 3, 'Aula 6 / Série 6 (primitivas, integral definido, área)'],
+  ['2026-10-23', 'todo o dia', 5, 'Simulacro 1 de 80 min (teste antigo, só o que cai nas aulas 1 a 6). Depois correção e lista dos erros por tipo'],
+  ['2026-10-24', 'todo o dia', 5, 'Simulacro 2 de 80 min, correção e refazer todos os erros'],
+  ['2026-10-25', 'todo o dia', 3, 'Resumo, formulário (derivadas, limites, tabela de primitivas, TFC) e 3 a 4 exercícios por tema'],
+  ['2026-10-26', 'a confirmar', '1 a 2', 'Só o formulário e uma leitura leve. Deita-te cedo']
+];
+const calcPlanTasks = discId => CALC_PLAN.map(([date, avail, blocks, title], i) => ({
+  id: `t-calc-plano-${i + 1}`, title, date, disciplineId: discId, done: false,
+  note: `Disponível: ${avail} · ${blocks} ${blocks === 1 ? 'bloco' : 'blocos'}`
+}));
+
 const TOT_DISC = () => ({ id: 'd-tot', semester: 's1', name: 'TOT', color: '#0ea5e9', components: [] });
 
 /* ---------- Estado + localStorage ---------- */
@@ -92,6 +112,7 @@ function normalizeTask(t) {
     date: ''
   };
   if (isISODate(t.doneDate)) out.doneDate = t.doneDate;
+  if (typeof t.note === 'string' && t.note.trim()) out.note = t.note.trim();
   if (start && end && start <= end) { out.start = start; out.end = end; }
   else out.date = isISODate(t.date) ? t.date : (end || '');
   return out;
@@ -112,6 +133,12 @@ function normalizeState(s) {
     if (st.semesters.s1 && !st.disciplines.some(d => d.id === 'd-tot' || d.name.trim().toUpperCase() === 'TOT')) st.disciplines.push(TOT_DISC());
     st.addedTot = true;
   }
+  if (!st.addedCalcPlan) {
+    const calc = st.disciplines.find(d => d.id === 'd-calculo') || st.disciplines.find(d => /c[aá]lculo/i.test(d.name));
+    const ids = new Set(st.tasks.map(t => t.id));
+    calcPlanTasks(calc ? calc.id : '').forEach(t => { if (!ids.has(t.id)) st.tasks.push(t); });
+    st.addedCalcPlan = true;
+  }
   if (!st.semesters[st.currentSemester]) st.currentSemester = Object.keys(st.semesters)[0];
   if (!Number.isFinite(st.updatedAt)) st.updatedAt = 0;
   return st;
@@ -125,7 +152,7 @@ function loadState() {
       if (s && typeof s === 'object') return normalizeState(s);
     }
   } catch (e) { console.warn('Não foi possível ler os dados guardados.', e); }
-  return seedState();
+  return normalizeState(seedState());
 }
 
 let state = loadState();
@@ -935,6 +962,7 @@ function taskItem(t) {
   const bits = [];
   if (t.disciplineId && findDisc(t.disciplineId)) bits.push(esc(discName(t.disciplineId)));
   if (isRange(t)) bits.push(`${fmtDate(t.start)} → ${fmtDate(t.end)}`);
+  if (t.note) bits.push(esc(t.note));
   if (late) bits.push(`<span class="badge-late">Atrasada desde ${n} ${n === 1 ? 'dia' : 'dias'}</span>`);
   return `
     <li class="task${t.done ? ' done' : ''}" style="--c:${t.disciplineId ? discColor(t.disciplineId) : 'var(--border)'}">
@@ -1033,6 +1061,84 @@ taskForm.addEventListener('submit', e => {
   });
 });
 
+/* ==========================================================
+   TAREFAS DIÁRIAS (Ontem · Hoje · Amanhã lado a lado + próximos dias)
+   ========================================================== */
+const DAILY_COLS = [[-1, 'Ontem'], [0, 'Hoje'], [1, 'Amanhã']];
+
+function dailyTasksFor(day) {
+  const rank = t => (t.done ? 1 : 0);
+  return state.tasks.filter(t => !isBacklog(t) && coversDay(t, day))
+    .sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title));
+}
+
+function renderDaily() {
+  const today = todayISO();
+  $('#daily-cols').innerHTML = DAILY_COLS.map(([off, label]) => {
+    const day = addDays(today, off);
+    const list = dailyTasksFor(day);
+    const done = list.filter(t => t.done).length;
+    // ontem: avisa o que ficou por fazer
+    const late = off === -1 ? list.filter(t => !t.done).length : 0;
+    return `
+      <section class="card daily-col${off === 0 ? ' is-today' : ''}">
+        <div class="between">
+          <h2>${label}</h2>
+          <span class="muted small">${list.length ? `${done}/${list.length}` : ''}</span>
+        </div>
+        <p class="muted small daily-date">${esc(longDate(day))}${late ? ` · <span class="badge-late">${late} por fazer</span>` : ''}</p>
+        ${list.length ? `<div class="mini-progress"><span style="width:${Math.round(done / list.length * 100)}%"></span></div>` : ''}
+        <ul class="list">${list.length ? list.map(taskItem).join('') : '<li class="muted">Sem tarefas.</li>'}</ul>
+        <form class="daily-add" data-day="${day}">
+          <input name="title" placeholder="+ Tarefa para ${label.toLowerCase()}" required maxlength="120" aria-label="Nova tarefa para ${label}">
+        </form>
+      </section>`;
+  }).join('');
+
+  // próximos dias (depois de amanhã, 2 semanas)
+  const rows = [];
+  for (let i = 2; i <= 15; i++) {
+    const day = addDays(today, i);
+    const list = state.tasks.filter(t => !isBacklog(t) && !isRange(t) && t.date === day);
+    if (list.length) rows.push(`
+      <li class="upcoming-day">
+        <div class="upcoming-date"><strong>${esc(parseISO(day).toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric' }))}</strong></div>
+        <ul class="list">${list.map(taskItem).join('')}</ul>
+      </li>`);
+  }
+  $('#daily-upcoming').innerHTML = rows.join('') || '<li class="muted">Nada marcado para os próximos dias.</li>';
+}
+
+$('#tab-daily').addEventListener('submit', e => {
+  const f = e.target.closest('.daily-add');
+  if (!f) return;
+  e.preventDefault();
+  const title = String(new FormData(f).get('title')).trim();
+  if (!title) return;
+  state.tasks.push({ id: uid(), title, date: f.dataset.day, disciplineId: '', done: false });
+  save();
+  renderAll();
+  const again = $(`#tab-daily .daily-add[data-day="${f.dataset.day}"] input`);
+  if (again) again.focus();
+});
+$('#tab-daily').addEventListener('change', e => {
+  if (e.target.type !== 'checkbox') return;
+  const t = state.tasks.find(x => x.id === e.target.dataset.id);
+  if (!t) return;
+  setTaskDone(t, e.target.checked);
+  save();
+  renderAll();
+});
+$('#tab-daily').addEventListener('click', e => {
+  const ed = e.target.closest('[data-action="edit-task"]');
+  if (ed) { openTaskDialog(state.tasks.find(t => t.id === ed.dataset.id)); return; }
+  const b = e.target.closest('[data-action="del-task"]');
+  if (!b || !confirm('Apagar esta tarefa?')) return;
+  state.tasks = state.tasks.filter(t => t.id !== b.dataset.id);
+  save();
+  renderAll();
+});
+
 /* --- diálogo de tarefa (editar / concluir / apagar) --- */
 const taskDialog = $('#task-dialog');
 const taskEditForm = $('#task-edit-form');
@@ -1047,6 +1153,7 @@ function openTaskDialog(t) {
   f['start'].value = isRange(t) ? t.start : (t.date || '');
   f['end'].value = isRange(t) ? t.end : '';
   f['done'].checked = !!t.done;
+  f['note'].value = t.note || '';
   openDialog(taskDialog);
 }
 
@@ -1065,6 +1172,8 @@ taskEditForm.addEventListener('submit', e => {
   if (start && end && end < start) { toast('O fim não pode ser antes do início.'); return; }
   const discId = String(fd.get('discipline') || '');
   t.title = title;
+  const note = String(fd.get('note') || '').trim();
+  if (note) t.note = note; else delete t.note;
   t.disciplineId = findDisc(discId) ? discId : '';
   delete t.start; delete t.end; t.date = '';
   if (start && end) { t.start = start; t.end = end; } else t.date = start;
@@ -1178,6 +1287,7 @@ function renderAll() {
   renderDashboard();
   renderCalendar();
   renderChecklist();
+  renderDaily();
   renderFiles();
   renderGrades();
 }

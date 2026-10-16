@@ -373,3 +373,18 @@ dialog::backdrop { background: rgba(2, 6, 23, .55); }
 .cal-chip.tarefa { border-left-style: dashed; }
 .check-row { display: flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--text); }
 .task .icon-btn { width: 34px; height: 34px; flex-basis: 34px; font-size: .95rem; }
+
+/* ---------- Tarefas diárias ---------- */
+.daily-cols { display: grid; gap: 0 16px; }
+@media (min-width: 900px) { .daily-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.daily-col.is-today { border: 2px solid var(--primary); }
+.daily-date { margin: 2px 0 8px; }
+.daily-add { margin-top: 10px; }
+.mini-progress { height: 4px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.mini-progress span { display: block; height: 100%; background: var(--primary); }
+.upcoming-day { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: start; }
+.upcoming-day .list { margin: 0; }
+.upcoming-date { padding-top: 10px; text-transform: capitalize; font-size: .85rem; }
+.upcoming { gap: 12px; }
+#daily-cols [data-action="del-task"] { display: none; }
+#daily-cols .task { padding: 10px; gap: 8px; }

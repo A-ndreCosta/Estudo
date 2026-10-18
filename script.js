@@ -91,8 +91,20 @@ const CALC_PLAN = [
   ['2026-10-25', 'todo o dia', 3, 'Resumo, formulário (derivadas, limites, tabela de primitivas, TFC) e 3 a 4 exercícios por tema'],
   ['2026-10-26', 'a confirmar', '1 a 2', 'Só o formulário e uma leitura leve. Deita-te cedo']
 ];
-const calcPlanTasks = discId => CALC_PLAN.map(([date, avail, blocks, title], i) => ({
-  id: `t-calc-plano-${i + 1}`, title, date, disciplineId: discId, done: false,
+// plano revisto a 18/10: substitui os dias de 18 a 26 do plano anterior
+const CALC_PLAN_V2 = [
+  ['2026-10-18', 'até ao fim do dia', 3, 'Série 5, ex. 1 e 2 (monotonia, extremos locais, concavidade, inflexão)'],
+  ['2026-10-19', 'depois das 14h', 3, 'Série 5, ex. 3 e 4 (2.º teste da derivada, extremos absolutos) e o resto do núcleo'],
+  ['2026-10-20', 'depois das 17h30', 2, 'Acabar a Série 5 (otimização incluída) e anotar os erros'],
+  ['2026-10-21', 'depois das 16h30', 2, 'Revisão da Série 3: só os exercícios difíceis e um de cada regra (produto, quociente, cadeia)'],
+  ['2026-10-22', 'depois das 13h30', 3, 'Revisão da Série 4: implícita, trig. inversas, L’Hôpital. Se a Aula 6 já saiu, começa por ela'],
+  ['2026-10-23', 'todo o dia', 5, 'Aula 6 / Série 6 (primitivas, integral definido, área). Miniteste antigo a 18 min de manhã, com correção'],
+  ['2026-10-24', 'todo o dia', 5, 'Simulacro 1 de 80 min, só com o que cai nas aulas 1 a 6. Correção e lista de erros por tipo'],
+  ['2026-10-25', 'todo o dia', 4, 'Simulacro 2 de 80 min, correção e refazer os erros. Depois o formulário (derivadas, limites, primitivas, TFC)'],
+  ['2026-10-26', 'depois das 14h', '1 a 2', 'Só o formulário e uma leitura leve. Dormir cedo']
+];
+const calcPlanTasks = (discId, plan = CALC_PLAN, prefix = 't-calc-plano-') => plan.map(([date, avail, blocks, title], i) => ({
+  id: `${prefix}${i + 1}`, title, date, disciplineId: discId, done: false,
   note: `Disponível: ${avail} · ${blocks} ${blocks === 1 ? 'bloco' : 'blocos'}`
 }));
 
@@ -138,6 +150,14 @@ function normalizeState(s) {
     const ids = new Set(st.tasks.map(t => t.id));
     calcPlanTasks(calc ? calc.id : '').forEach(t => { if (!ids.has(t.id)) st.tasks.push(t); });
     st.addedCalcPlan = true;
+  }
+  if (!st.calcPlanV2) {
+    const calc = st.disciplines.find(d => d.id === 'd-calculo') || st.disciplines.find(d => /c[aá]lculo/i.test(d.name));
+    // tira as tarefas do plano antigo a partir de 18/10 que ainda não foram feitas
+    st.tasks = st.tasks.filter(t => !(/^t-calc-plano-\d+$/.test(t.id) && t.date >= '2026-10-18' && !t.done));
+    const ids = new Set(st.tasks.map(t => t.id));
+    calcPlanTasks(calc ? calc.id : '', CALC_PLAN_V2, 't-calc-plano2-').forEach(t => { if (!ids.has(t.id)) st.tasks.push(t); });
+    st.calcPlanV2 = true;
   }
   if (!st.semesters[st.currentSemester]) st.currentSemester = Object.keys(st.semesters)[0];
   if (!Number.isFinite(st.updatedAt)) st.updatedAt = 0;

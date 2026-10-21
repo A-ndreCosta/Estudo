@@ -248,7 +248,7 @@
         <label>Hora <input type="time" name="time"></label>
       </div>
       <div class="row">
-        <label>Disciplina <select name="discipline" required></select></label>
+        <label>Disciplina <select name="discipline"></select></label>
         <label>Tipo
           <select name="type">
             <option value="teste">Teste</option>
@@ -257,6 +257,7 @@
           </select>
         </label>
       </div>
+      <label class="check-row"><input type="checkbox" name="repeat"> Repetir todos os meses neste dia</label>
       <div class="dialog-actions">
         <button type="button" class="btn btn-danger" id="event-delete" hidden>Apagar</button>
         <span class="spacer"></span>

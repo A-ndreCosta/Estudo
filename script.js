@@ -159,6 +159,12 @@ function normalizeState(s) {
     calcPlanTasks(calc ? calc.id : '', CALC_PLAN_V2, 't-calc-plano2-').forEach(t => { if (!ids.has(t.id)) st.tasks.push(t); });
     st.calcPlanV2 = true;
   }
+  if (!st.addedPagarUni) {
+    if (!st.events.some(ev => ev.id === 'e-pagar-uni')) {
+      st.events.push({ id: 'e-pagar-uni', title: 'Pagar universidade', date: '2026-10-21', time: '20:00', disciplineId: '', type: 'tarefa', repeat: 'monthly' });
+    }
+    st.addedPagarUni = true;
+  }
   if (!st.semesters[st.currentSemester]) st.currentSemester = Object.keys(st.semesters)[0];
   if (!Number.isFinite(st.updatedAt)) st.updatedAt = 0;
   return st;
@@ -639,7 +645,7 @@ function mergeState(inc) {
   const isDate = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
   const rules = {
     grades: g => typeof g.name === 'string' && Number.isFinite(g.value) && g.value >= 0 && g.value <= 20 && discIds.has(g.disciplineId),
-    events: ev => typeof ev.title === 'string' && isDate(ev.date) && discIds.has(ev.disciplineId) &&
+    events: ev => typeof ev.title === 'string' && isDate(ev.date) && (!ev.disciplineId || discIds.has(ev.disciplineId)) &&
       EVENT_TYPES.includes(ev.type) && (!ev.time || /^\d{2}:\d{2}$/.test(ev.time)),
     tasks: t => typeof t.title === 'string',
     links: l => typeof l.name === 'string' && typeof l.url === 'string' && /^https?:\/\//i.test(l.url) &&
@@ -704,7 +710,7 @@ function renderDashboard() {
   // próximo "Teste" do semestre selecionado
   const discIds = new Set(semDisciplines().map(d => d.id));
   const upcoming = state.events
-    .filter(ev => ev.type === 'teste' && discIds.has(ev.disciplineId))
+    .filter(ev => ev.type === 'teste' && (!ev.disciplineId || discIds.has(ev.disciplineId)))
     .map(ev => ({ ev, at: eventDateTime(ev) }))
     .filter(x => x.at >= now)
     .sort((a, b) => a.at - b.at);
@@ -716,13 +722,13 @@ function renderDashboard() {
   if (after) {
     const days = daysBetween(todayISO(), after.ev.date);
     $('#next-test').style.setProperty('--c', discColor(after.ev.disciplineId));
-    $('#next-test-title').textContent = `${after.ev.title} · ${discName(after.ev.disciplineId)}`;
+    $('#next-test-title').textContent = [after.ev.title, discName(after.ev.disciplineId)].filter(Boolean).join(' · ');
     $('#next-test-days').textContent = days === 0 ? 'hoje' : days === 1 ? 'amanhã' : `faltam ${days} dias`;
   }
 
   if (next) {
     const diff = next.at - now;
-    $('#countdown-title').textContent = `${next.ev.title} · ${discName(next.ev.disciplineId)}`;
+    $('#countdown-title').textContent = [next.ev.title, discName(next.ev.disciplineId)].filter(Boolean).join(' · ');
     $('#countdown-sub').textContent = longDate(next.ev.date) + (next.ev.time ? ` às ${next.ev.time}` : '');
     $('#cd-days').textContent = Math.floor(diff / 864e5);
     $('#cd-hours').textContent = Math.floor((diff % 864e5) / 36e5);
@@ -760,8 +766,19 @@ let calSelected = todayISO();
 
 const semEvents = () => {
   const ids = new Set(semDisciplines().map(d => d.id));
-  return state.events.filter(ev => ids.has(ev.disciplineId));
+  return state.events.filter(ev => !ev.disciplineId || ids.has(ev.disciplineId));
 };
+// eventos que se repetem todos os meses no mesmo dia (num mês mais curto, fica no último dia)
+const isMonthly = ev => ev.repeat === 'monthly';
+function occursOn(ev, iso) {
+  if (!isMonthly(ev)) return ev.date === iso;
+  if (iso < ev.date) return false;
+  const want = Number(ev.date.slice(8, 10));
+  const d = parseISO(iso);
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  return d.getDate() === Math.min(want, lastDay);
+}
+const evDone = (ev, iso) => (isMonthly(ev) ? (ev.doneDates || []).includes(iso) : !!ev.done);
 const sortEvents = (a, b) => (a.time || '').localeCompare(b.time || '') || a.title.localeCompare(b.title);
 
 function goToDate(iso) {
@@ -788,11 +805,14 @@ function renderCalendar() {
   $('#cal-title').textContent = new Date(calYear, calMonth, 1).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
 
   const byDate = {};
-  semEvents().forEach(ev => { (byDate[ev.date] = byDate[ev.date] || []).push(ev); });
   const tByDate = rangeTasksByDate();
 
   const first = new Date(calYear, calMonth, 1);
   const start = new Date(calYear, calMonth, 1 - ((first.getDay() + 6) % 7)); // semana começa à segunda
+  const evs0 = semEvents();
+  const visible = new Set([calSelected]);
+  for (let i = 0; i < 42; i++) visible.add(toISO(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)));
+  visible.forEach(iso => { const l = evs0.filter(ev => occursOn(ev, iso)); if (l.length) byDate[iso] = l; });
   const today = todayISO();
   let html = '';
   for (let i = 0; i < 42; i++) {
@@ -807,7 +827,7 @@ function renderCalendar() {
               data-date="${iso}" aria-label="${esc(longDate(iso))}${total ? `, ${total} item(ns)` : ''}">
         <span class="cal-num">${d.getDate()}</span>
         <span class="cal-dots">${evs.slice(0, 4).map(ev => `<span class="cal-dot ${ev.type}" style="--c:${discColor(ev.disciplineId)}"></span>`).join('')}${tks.slice(0, Math.max(0, 4 - evs.length)).map(t => `<span class="cal-dot ctask" style="--c:${taskColor(t)}"></span>`).join('')}</span>
-        ${evs.slice(0, 3).map(ev => `<span class="cal-chip ${ev.type}${ev.done ? ' done' : ''}" style="--c:${discColor(ev.disciplineId)}">${esc(ev.time ? ev.time + ' ' : '')}${esc(ev.title)}</span>`).join('')}${tks.slice(0, Math.max(0, 3 - evs.length)).map(taskChip).join('')}
+        ${evs.slice(0, 3).map(ev => `<span class="cal-chip ${ev.type}${evDone(ev, iso) ? ' done' : ''}" style="--c:${discColor(ev.disciplineId)}">${esc(ev.time ? ev.time + ' ' : '')}${esc(ev.title)}</span>`).join('')}${tks.slice(0, Math.max(0, 3 - evs.length)).map(taskChip).join('')}
         ${total > 3 ? `<span class="cal-chip-more">+${total - 3}</span>` : ''}
       </button>`;
   }
@@ -822,11 +842,11 @@ function renderCalendar() {
   const dayTasks = tByDate[calSelected] || [];
   $('#cal-day-events').innerHTML = (dayEvs.length || dayTasks.length)
     ? dayEvs.map(ev => `
-    <li class="event-item${ev.done ? ' is-done' : ''}" style="--c:${discColor(ev.disciplineId)}">
-      <input type="checkbox" data-action="toggle-event" data-id="${esc(ev.id)}"${ev.done ? ' checked' : ''} aria-label="Concluído: ${esc(ev.title)}">
+    <li class="event-item${evDone(ev, calSelected) ? ' is-done' : ''}" style="--c:${discColor(ev.disciplineId)}">
+      <input type="checkbox" data-action="toggle-event" data-id="${esc(ev.id)}"${evDone(ev, calSelected) ? ' checked' : ''} aria-label="Concluído: ${esc(ev.title)}">
       <div class="grow">
         <div class="title">${esc(ev.title)}</div>
-        <div class="muted">${ev.time ? esc(ev.time) + ' · ' : ''}${esc(discName(ev.disciplineId))}</div>
+        <div class="muted">${[ev.time, discName(ev.disciplineId), isMonthly(ev) ? '↻ todos os meses' : ''].filter(Boolean).map(esc).join(' · ')}</div>
       </div>
       <span class="type-badge">${typeLabel(ev.type)}</span>
       <button type="button" class="icon-btn" data-action="edit-event" data-id="${esc(ev.id)}" aria-label="Editar ${esc(ev.title)}">✎</button>
@@ -866,8 +886,7 @@ const eventDialog = $('#event-dialog');
 const eventForm = $('#event-form');
 
 function openEventDialog(ev) {
-  if (!semDisciplines().length) { toast('Cria primeiro uma disciplina em ⚙ Definições.'); return; }
-  fillDisciplineSelect(eventForm.elements['discipline']);
+  fillDisciplineSelect(eventForm.elements['discipline'], { empty: true });
   eventForm.reset();
   $('#event-dialog-title').textContent = ev ? 'Editar evento' : 'Novo evento';
   $('#event-delete').hidden = !ev;
@@ -876,7 +895,8 @@ function openEventDialog(ev) {
   eventForm.elements['date'].value = ev ? ev.date : calSelected;
   eventForm.elements['time'].value = ev ? (ev.time || '') : '';
   eventForm.elements['type'].value = ev ? ev.type : 'teste';
-  if (ev && findDisc(ev.disciplineId)) eventForm.elements['discipline'].value = ev.disciplineId;
+  eventForm.elements['discipline'].value = ev && findDisc(ev.disciplineId) ? ev.disciplineId : '';
+  eventForm.elements['repeat'].checked = !!(ev && isMonthly(ev));
   openDialog(eventDialog);
 }
 
@@ -890,12 +910,15 @@ eventForm.addEventListener('submit', e => {
   const title = String(fd.get('title')).trim();
   const date = String(fd.get('date'));
   const discId = String(fd.get('discipline'));
-  if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !findDisc(discId)) { toast('Preenche o título, a data e a disciplina.'); return; }
-  const rec = { title, date, time: String(fd.get('time') || ''), disciplineId: discId, type: EVENT_TYPES.includes(fd.get('type')) ? String(fd.get('type')) : 'teste' };
+  if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('Preenche o título e a data.'); return; }
+  const rec = { title, date, time: String(fd.get('time') || ''), disciplineId: findDisc(discId) ? discId : '', type: EVENT_TYPES.includes(fd.get('type')) ? String(fd.get('type')) : 'teste' };
   const id = String(fd.get('eventId') || '');
   const existing = id ? state.events.find(x => x.id === id) : null;
-  if (existing) Object.assign(existing, rec);
-  else state.events.push({ id: uid(), ...rec });
+  if (fd.get('repeat')) rec.repeat = 'monthly';
+  if (existing) {
+    if (!rec.repeat) { delete existing.repeat; delete existing.doneDates; }
+    Object.assign(existing, rec);
+  } else state.events.push({ id: uid(), ...rec });
   save();
   eventDialog.close();
   goToDate(date);
@@ -916,7 +939,12 @@ $('#cal-day-events').addEventListener('change', e => {
   if (cb.dataset.action === 'toggle-event') {
     const ev = state.events.find(x => x.id === cb.dataset.id);
     if (!ev) return;
-    if (cb.checked) ev.done = true; else delete ev.done;
+    if (isMonthly(ev)) {
+      // concluído só neste mês
+      const set = new Set(ev.doneDates || []);
+      if (cb.checked) set.add(calSelected); else set.delete(calSelected);
+      ev.doneDates = [...set].sort();
+    } else if (cb.checked) ev.done = true; else delete ev.done;
   } else if (cb.dataset.action === 'toggle-task') {
     const t = state.tasks.find(x => x.id === cb.dataset.id);
     if (!t) return;

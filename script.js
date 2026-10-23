@@ -111,6 +111,21 @@ const CALC_PLAN_V3 = [
   ['2026-10-25', 'todo o dia', 4, 'Simulacro 2 de 80 min e correção. Ficha 2 restante (8c, 9c/d, 10c). Ficha 1 (7, 8, 9) se der tempo. Formulário e tabela trigonométrica'],
   ['2026-10-26', 'depois das 14h', '1 a 2', 'Só o formulário, os erros dos simulacros e uma leitura leve. Dormir cedo']
 ];
+// plano final (24 a 26/10), um bloco por tarefa; substitui tudo o que havia no Diário
+const CALC_PLAN_V4 = [
+  ['2026-10-24', 'Simulacro 1 de 80 min (miniteste completo + exame ex. 1 a 5, sem consulta)'],
+  ['2026-10-24', 'Correção e lista de erros'],
+  ['2026-10-24', 'Ficha 2, limites e continuidade: 1b/d, 2c, 3a, 4d, 5, 6a/b, 7c'],
+  ['2026-10-24', 'Ficha 2 restante (8c, 9c/d, 10c) e Ficha 1 (1b, 1d, 4)'],
+  ['2026-10-24', 'Série 6, ex. 3 (b, c, d) e 6d'],
+  ['2026-10-25', 'Simulacro 2 de 80 min (exame ex. 6, 7, 8a, 9a e o que errares)'],
+  ['2026-10-25', 'Correção'],
+  ['2026-10-25', 'Ficha 5 por explicar (7, 8d, 9, 10c) e refazer sem ajuda 1b/c, 4b/c/d, 5, 6'],
+  ['2026-10-25', 'Série 6 a repetir (2c, 8d, 9c, 9d) e decorar o formulário e a tabela trigonométrica'],
+  ['2026-10-26', 'Só o formulário, os erros dos simulacros e 3 a 4 exercícios de derivadas e limites. Dormir cedo']
+];
+const V4_NOTES = { '2026-10-24': ['todo o dia', 5], '2026-10-25': ['todo o dia', 4], '2026-10-26': ['depois das 14h', '1 a 2'] };
+
 const calcPlanTasks = (discId, plan = CALC_PLAN, prefix = 't-calc-plano-') => plan.map(([date, avail, blocks, title], i) => ({
   id: `${prefix}${i + 1}`, title, date, disciplineId: discId, done: false,
   note: `Disponível: ${avail} · ${blocks} ${blocks === 1 ? 'bloco' : 'blocos'}`
@@ -174,6 +189,24 @@ function normalizeState(s) {
     const ids = new Set(st.tasks.map(t => t.id));
     calcPlanTasks(calc ? calc.id : '', CALC_PLAN_V3, 't-calc-plano3-').forEach(t => { if (!ids.has(t.id)) st.tasks.push(t); });
     st.calcPlanV3 = true;
+  }
+  if (!st.calcPlanV4) {
+    const calc = st.disciplines.find(d => d.id === 'd-calculo') || st.disciplines.find(d => /c[aá]lculo/i.test(d.name));
+    // tira todas as tarefas com dia ou intervalo (as «Sem prazo» ficam); guarda uma cópia neste aparelho
+    const removed = st.tasks.filter(t => t.date || (t.start && t.end));
+    try { if (removed.length) localStorage.setItem('estudo-tarefas-removidas-v4', JSON.stringify(removed)); } catch (e) {}
+    st.tasks = st.tasks.filter(t => !(t.date || (t.start && t.end)));
+    const count = {};
+    CALC_PLAN_V4.forEach(([date, title], i) => {
+      count[date] = (count[date] || 0) + 1;
+      const [avail, blocks] = V4_NOTES[date];
+      const total = CALC_PLAN_V4.filter(x => x[0] === date).length;
+      st.tasks.push({
+        id: `t-calc-plano4-${i + 1}`, title, date, disciplineId: calc ? calc.id : '', done: false,
+        note: total > 1 ? `B${count[date]} de ${blocks} · ${avail}` : `${avail} · ${blocks} blocos`
+      });
+    });
+    st.calcPlanV4 = true;
   }
   if (!st.addedPagarUni) {
     if (!st.events.some(ev => ev.id === 'e-pagar-uni')) {
@@ -1137,7 +1170,7 @@ const DAILY_COLS = [[-1, 'Ontem'], [0, 'Hoje'], [1, 'Amanhã']];
 function dailyTasksFor(day) {
   const rank = t => (t.done ? 1 : 0);
   return state.tasks.filter(t => !isBacklog(t) && coversDay(t, day) && visibleOn(t, day))
-    .sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title));
+    .sort((a, b) => rank(a) - rank(b)); // mantém a ordem em que foram criadas (B1, B2, …)
 }
 
 let dailyView = 'days';

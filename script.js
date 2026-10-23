@@ -126,6 +126,25 @@ const CALC_PLAN_V4 = [
 ];
 const V4_NOTES = { '2026-10-24': ['todo o dia', 5], '2026-10-25': ['todo o dia', 4], '2026-10-26': ['depois das 14h', '1 a 2'] };
 
+// plano até ao teste (27/10), versão final: substitui TODAS as tarefas
+const CALC_PLAN_V5 = [
+  ['2026-10-24', 'B1 · Simulacro 1 (80 min, sem consulta, miniteste + exame ex. 1 a 5)', 'Não pode falhar'],
+  ['2026-10-24', 'B2 · Correção e lista de erros do simulacro', 'Não pode falhar'],
+  ['2026-10-24', 'B3 · Série 3 (núcleo), exercícios-chave: 2b, 3b, 3d, 4c, 4d, 4e, 5a, 5b, 6d, 8b, 8d, 10', 'Se estiveres cansado, passa para domingo'],
+  ['2026-10-24', 'B4 · Ficha 2: limites e continuidade (1b/d, 2c, 3a, 4d, 5, 6a/b, 7c)', 'Se estiveres cansado, passa para domingo'],
+  ['2026-10-24', 'B5 · Ficha 1: 1b, 1d, 4, e Série 6 ex. 3 (b, c, d) e 6d', 'Se estiveres cansado, passa para domingo'],
+  ['2026-10-25', 'B1 · Série 4 (núcleo), derivação: 1a, 1b, 2a, 3a, 3e, 4a, 4b, 5c, 6a, 10a, 10b', ''],
+  ['2026-10-25', 'B2 · Série 4, L’Hôpital e aproximação linear: 7a, 7b, 8a, 8c, 8d, 9', ''],
+  ['2026-10-25', 'B3 · Ficha 5 em falta: ex. 7, 8d, 9, 10c', ''],
+  ['2026-10-25', 'B4 · Simulacro 2 (80 min, sem consulta, com provas diferentes do 1)', ''],
+  ['2026-10-25', 'B5 · Correção do Simulacro 2 e repetir só o que errei nos dois simulacros', ''],
+  ['2026-10-26', 'Tarde · Refazer sozinho 1 exercício de cada tipo (otimização, estudo de função, integral definido, área, TFC)', ''],
+  ['2026-10-26', 'Noite (máx. 1 h) · Passar o formulário e a tabela trigonométrica a limpo, de memória, e confirmar com o original', 'Dormir cedo'],
+  ['2026-10-27', 'Acordar com tempo, comer, sair com margem', 'Dia do teste (80 min)'],
+  ['2026-10-27', 'Só reler o formulário que escrevi. Nada de matéria nova', ''],
+  ['2026-10-27', 'No teste: ler tudo primeiro, fazer primeiro o que sei, deixar o mais longo para o fim', '']
+];
+
 const calcPlanTasks = (discId, plan = CALC_PLAN, prefix = 't-calc-plano-') => plan.map(([date, avail, blocks, title], i) => ({
   id: `${prefix}${i + 1}`, title, date, disciplineId: discId, done: false,
   note: `Disponível: ${avail} · ${blocks} ${blocks === 1 ? 'bloco' : 'blocos'}`
@@ -207,6 +226,15 @@ function normalizeState(s) {
       });
     });
     st.calcPlanV4 = true;
+  }
+  if (!st.calcPlanV5) {
+    const calc = st.disciplines.find(d => d.id === 'd-calculo') || st.disciplines.find(d => /c[aá]lculo/i.test(d.name));
+    // tira todas as tarefas (também as «Sem prazo»); guarda uma cópia neste aparelho
+    try { if (st.tasks.length) localStorage.setItem('estudo-tarefas-removidas-v5', JSON.stringify(st.tasks)); } catch (e) {}
+    st.tasks = CALC_PLAN_V5.map(([date, title, note], i) => Object.assign(
+      { id: `t-calc-plano5-${i + 1}`, title, date, disciplineId: calc ? calc.id : '', done: false },
+      note ? { note } : {}));
+    st.calcPlanV5 = true;
   }
   if (!st.addedPagarUni) {
     if (!st.events.some(ev => ev.id === 'e-pagar-uni')) {

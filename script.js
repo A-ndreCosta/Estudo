@@ -422,6 +422,7 @@ gradesBox.addEventListener('click', e => {
 const settingsDialog = $('#settings-dialog');
 
 function renderSettings() {
+  $('#theme-select').value = state.theme || '';
   const open = new Set($$('#settings-disciplines details[open]').map(d => d.dataset.disc));
   const sem = state.semesters[state.currentSemester];
   $('#settings-sem-name').textContent = sem.name;
@@ -812,7 +813,7 @@ function rangeTasksByDate() {
     if (!t.start || !t.end) return;
     if (t.disciplineId && !ids.has(t.disciplineId)) return;
     let d = t.start, guard = 0;
-    while (d <= t.end && guard++ < 400) { (map[d] = map[d] || []).push(t); d = addDays(d, 1); }
+    while (d <= t.end && visibleOn(t, d) && guard++ < 400) { (map[d] = map[d] || []).push(t); d = addDays(d, 1); }
   });
   return map;
 }
@@ -1006,11 +1007,14 @@ const isRange = t => !!(t.start && t.end);
 const isBacklog = t => !isRange(t) && !t.date;
 const dueDate = t => (isRange(t) ? t.end : t.date);
 const isLate = t => !t.done && !!dueDate(t) && dueDate(t) < todayISO();
+// tarefa concluída só aparece até ao dia em que foi concluída (nos dias seguintes desaparece)
+const visibleOn = (t, day) => !t.done || day <= (t.doneDate || dueDate(t) || day);
+const lateTasks = () => state.tasks.filter(isLate).sort((a, b) => dueDate(a).localeCompare(dueDate(b)));
 const coversDay = (t, day) => (isRange(t) ? t.start <= day && day <= t.end : t.date === day);
 
 function tasksForView() {
   const day = viewDay(), today = todayISO();
-  let list = state.tasks.filter(t => !isBacklog(t) && coversDay(t, day));
+  let list = state.tasks.filter(t => !isBacklog(t) && coversDay(t, day) && visibleOn(t, day));
   if (dayOffset === 0) {
     // atrasadas por fazer + as concluídas hoje (para não desaparecerem ao marcar)
     list = list.concat(state.tasks.filter(t =>
@@ -1027,7 +1031,7 @@ function taskItem(t) {
   if (t.disciplineId && findDisc(t.disciplineId)) bits.push(esc(discName(t.disciplineId)));
   if (isRange(t)) bits.push(`${fmtDate(t.start)} → ${fmtDate(t.end)}`);
   if (t.note) bits.push(esc(t.note));
-  if (late) bits.push(`<span class="badge-late">Atrasada desde ${n} ${n === 1 ? 'dia' : 'dias'}</span>`);
+  if (late) bits.push(`<span class="badge-late">Atrasada há ${n} ${n === 1 ? 'dia' : 'dias'}</span>`);
   return `
     <li class="task${t.done ? ' done' : ''}" style="--c:${t.disciplineId ? discColor(t.disciplineId) : 'var(--border)'}">
       <input type="checkbox" data-id="${esc(t.id)}"${t.done ? ' checked' : ''} aria-label="Concluir: ${esc(t.title)}">
@@ -1054,7 +1058,7 @@ function renderChecklist() {
   const list = tasksForView();
   $('#task-list').innerHTML = list.length ? list.map(taskItem).join('') : '<li class="muted">Sem tarefas para este dia.</li>';
 
-  const bl = state.tasks.filter(isBacklog).sort((a, b) => Number(a.done) - Number(b.done));
+  const bl = state.tasks.filter(t => isBacklog(t) && visibleOn(t, viewDay())).sort((a, b) => Number(a.done) - Number(b.done));
   const open = bl.filter(t => !t.done).length;
   $('#backlog').innerHTML = bl.length ? `
     <h3 class="backlog-title">Sem prazo · ${open} por fazer</h3>
@@ -1132,12 +1136,53 @@ const DAILY_COLS = [[-1, 'Ontem'], [0, 'Hoje'], [1, 'Amanhã']];
 
 function dailyTasksFor(day) {
   const rank = t => (t.done ? 1 : 0);
-  return state.tasks.filter(t => !isBacklog(t) && coversDay(t, day))
+  return state.tasks.filter(t => !isBacklog(t) && coversDay(t, day) && visibleOn(t, day))
     .sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title));
+}
+
+let dailyView = 'days';
+
+function lateItem(t) {
+  const n = daysBetween(dueDate(t), todayISO());
+  const sev = n >= 7 ? 'sev3' : n >= 3 ? 'sev2' : 'sev1';
+  const bits = [];
+  if (t.disciplineId && findDisc(t.disciplineId)) bits.push(esc(discName(t.disciplineId)));
+  bits.push(isRange(t) ? `${fmtDate(t.start)} → ${fmtDate(t.end)}` : `era para ${esc(longDate(t.date))}`);
+  if (t.note) bits.push(esc(t.note));
+  return `
+    <li class="task late-item" style="--c:${t.disciplineId ? discColor(t.disciplineId) : 'var(--border)'}">
+      <input type="checkbox" data-id="${esc(t.id)}" aria-label="Concluir: ${esc(t.title)}">
+      <div class="grow">
+        <span class="title">${esc(t.title)}</span>
+        <small>${bits.join(' · ')}</small>
+      </div>
+      <span class="late-age ${sev}">há ${n} ${n === 1 ? 'dia' : 'dias'}</span>
+      <button type="button" class="btn btn-sm" data-action="to-today" data-id="${esc(t.id)}" title="Passar para hoje">→ Hoje</button>
+      <button type="button" class="icon-btn" data-action="edit-task" data-id="${esc(t.id)}" aria-label="Editar ${esc(t.title)}">✎</button>
+      <button type="button" class="icon-btn danger" data-action="del-task" data-id="${esc(t.id)}" aria-label="Apagar ${esc(t.title)}">✕</button>
+    </li>`;
+}
+
+function renderLateBadges() {
+  const n = lateTasks().length;
+  $$('.late-count').forEach(el => { el.textContent = n; el.hidden = !n; });
+  const banner = $('#late-banner');
+  if (banner) {
+    banner.hidden = !n;
+    $('#late-banner-text').textContent = `${n} ${n === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}`;
+  }
 }
 
 function renderDaily() {
   const today = todayISO();
+  renderLateBadges();
+  $$('#daily-switch .seg').forEach(b => b.classList.toggle('active', b.dataset.view === dailyView));
+  $('#daily-days').hidden = dailyView !== 'days';
+  $('#daily-late').hidden = dailyView !== 'late';
+  const late = lateTasks();
+  $('#late-list').innerHTML = late.length ? late.map(lateItem).join('')
+    : '<li class="empty-state">🎉 Nada atrasado. Está tudo em dia!</li>';
+  $('#late-all-today').hidden = late.length < 2;
   $('#daily-cols').innerHTML = DAILY_COLS.map(([off, label]) => {
     const day = addDays(today, off);
     const list = dailyTasksFor(day);
@@ -1163,7 +1208,7 @@ function renderDaily() {
   const rows = [];
   for (let i = 2; i <= 15; i++) {
     const day = addDays(today, i);
-    const list = state.tasks.filter(t => !isBacklog(t) && !isRange(t) && t.date === day);
+    const list = state.tasks.filter(t => !isBacklog(t) && !isRange(t) && t.date === day && visibleOn(t, day));
     if (list.length) rows.push(`
       <li class="upcoming-day">
         <div class="upcoming-date"><strong>${esc(parseISO(day).toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric' }))}</strong></div>
@@ -1193,7 +1238,32 @@ $('#tab-daily').addEventListener('change', e => {
   save();
   renderAll();
 });
+$('#daily-switch').addEventListener('click', e => {
+  const b = e.target.closest('[data-view]');
+  if (!b) return;
+  dailyView = b.dataset.view;
+  renderDaily();
+});
+
+// passa uma tarefa atrasada para hoje (dia único → hoje; intervalo → o fim passa a ser hoje)
+function moveToToday(t) {
+  const today = todayISO();
+  if (isRange(t)) t.end = today; else t.date = today;
+}
+$('#late-all-today').addEventListener('click', () => {
+  const late = lateTasks();
+  if (!late.length || !confirm(`Passar ${late.length} tarefas atrasadas para hoje?`)) return;
+  late.forEach(moveToToday);
+  save(); renderAll();
+});
+
 $('#tab-daily').addEventListener('click', e => {
+  const mv = e.target.closest('[data-action="to-today"]');
+  if (mv) {
+    const t = state.tasks.find(x => x.id === mv.dataset.id);
+    if (t) { moveToToday(t); save(); renderAll(); toast('Passou para hoje.'); }
+    return;
+  }
   const ed = e.target.closest('[data-action="edit-task"]');
   if (ed) { openTaskDialog(state.tasks.find(t => t.id === ed.dataset.id)); return; }
   const b = e.target.closest('[data-action="del-task"]');
@@ -1382,3 +1452,25 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) rend
 applyTheme();
 renderAll();
 showTab('dashboard');
+
+$('#late-banner').addEventListener('click', () => {
+  dailyView = 'late';
+  showTab('daily');
+  renderDaily();
+});
+
+$('#theme-select').addEventListener('change', e => {
+  state.theme = e.target.value === 'light' || e.target.value === 'dark' ? e.target.value : null;
+  saveLocal();
+  applyTheme();
+});
+$('#cleanup-btn').addEventListener('click', () => {
+  const limit = addDays(todayISO(), -30);
+  const old = state.tasks.filter(t => t.done && (t.doneDate || dueDate(t) || '') && (t.doneDate || dueDate(t)) < limit);
+  if (!old.length) { toast('Não há tarefas concluídas há mais de 30 dias.'); return; }
+  if (!confirm(`Apagar ${old.length} tarefa(s) concluída(s) há mais de 30 dias?`)) return;
+  const ids = new Set(old.map(t => t.id));
+  state.tasks = state.tasks.filter(t => !ids.has(t.id));
+  save(); renderAll();
+  toast(`${old.length} tarefa(s) apagada(s).`);
+});

@@ -51,6 +51,7 @@
     <button type="button" class="tab" data-tab="daily">
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       <span>Diário</span>
+      <span class="tab-badge late-count" hidden></span>
     </button>
     <button type="button" class="tab" data-tab="files">
       <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
@@ -85,6 +86,12 @@
         </div>
         <span class="next-test-days" id="next-test-days"></span>
       </div>
+
+      <button type="button" class="late-banner" id="late-banner" hidden>
+        <span class="late-banner-ico" aria-hidden="true">⚠</span>
+        <strong id="late-banner-text"></strong>
+        <span class="late-banner-go">Ver no Diário →</span>
+      </button>
 
       <div class="card" id="checklist-card">
         <h2 class="card-title">Checklist</h2>
@@ -154,10 +161,30 @@
 
     <!-- ============ Tarefas diárias ============ -->
     <section id="tab-daily" class="tab-panel" aria-label="Tarefas diárias">
-      <div class="daily-cols" id="daily-cols"></div>
-      <div class="card">
-        <h2>Próximos dias</h2>
-        <ul class="list upcoming" id="daily-upcoming"></ul>
+      <div class="segmented" id="daily-switch" role="tablist">
+        <button type="button" class="seg active" data-view="days" role="tab">Ontem · Hoje · Amanhã</button>
+        <button type="button" class="seg" data-view="late" role="tab">Atrasados <span class="seg-badge late-count" hidden></span></button>
+      </div>
+
+      <div id="daily-days">
+        <div class="daily-cols" id="daily-cols"></div>
+        <div class="card">
+          <h2>Próximos dias</h2>
+          <ul class="list upcoming" id="daily-upcoming"></ul>
+        </div>
+      </div>
+
+      <div id="daily-late" hidden>
+        <div class="card">
+          <div class="between">
+            <div>
+              <h2>Atrasados</h2>
+              <p class="muted small">Tarefas por fazer cujo dia (ou fim) já passou, da mais antiga para a mais recente.</p>
+            </div>
+            <button type="button" class="btn" id="late-all-today">Passar todas para hoje</button>
+          </div>
+          <ul class="list" id="late-list"></ul>
+        </div>
       </div>
     </section>
 
@@ -234,6 +261,25 @@
           <button class="btn btn-primary">Adicionar</button>
         </form>
       </section>
+
+      <section class="stack">
+        <h3>Aparência</h3>
+        <label>Tema
+          <select id="theme-select">
+            <option value="">Igual ao sistema</option>
+            <option value="light">Claro</option>
+            <option value="dark">Escuro</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="stack">
+        <h3>Limpeza</h3>
+        <p class="muted small">Tira da lista as tarefas concluídas há mais de 30 dias (não mexe nas outras).</p>
+        <button type="button" class="btn" id="cleanup-btn">Apagar tarefas antigas concluídas</button>
+      </section>
+
+      <p class="muted small version">Estudo · versão 2.0</p>
     </div>
   </dialog>
 

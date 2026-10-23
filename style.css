@@ -388,3 +388,49 @@ dialog::backdrop { background: rgba(2, 6, 23, .55); }
 .upcoming { gap: 12px; }
 #daily-cols [data-action="del-task"] { display: none; }
 #daily-cols .task { padding: 10px; gap: 8px; }
+
+/* ---------- v2: atrasados, separadores internos ---------- */
+.tab { position: relative; }
+.tab-badge, .seg-badge {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: var(--danger); color: #fff; font-size: .68rem; font-weight: 700;
+  display: inline-grid; place-items: center; line-height: 1;
+}
+.tab-badge { position: absolute; top: 2px; right: calc(50% - 22px); }
+@media (min-width: 768px) { .tab-badge { position: static; } }
+.segmented {
+  display: flex; gap: 4px; padding: 4px; margin-bottom: 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
+}
+.seg {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 40px; border: 0; border-radius: 10px; background: none; cursor: pointer;
+  font-weight: 600; color: var(--muted);
+}
+.seg:hover { background: var(--surface-2); }
+.seg.active { background: var(--primary); color: var(--primary-contrast); }
+.seg.active .seg-badge { background: var(--primary-contrast); color: var(--primary); }
+.late-item { border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); }
+.late-age { flex: none; font-size: .75rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.late-age.sev1 { background: color-mix(in srgb, #f59e0b 20%, transparent); color: #b45309; }
+.late-age.sev2 { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+.late-age.sev3 { background: var(--danger); color: #fff; }
+html[data-theme="dark"] .late-age.sev1 { color: #fbbf24; }
+.btn-sm { min-height: 34px; padding: 4px 10px; font-size: .8rem; flex: none; }
+@media (max-width: 560px) {
+  .late-item { flex-wrap: wrap; }
+  .late-item .grow { flex-basis: calc(100% - 40px); }
+  .late-item .late-age { margin-left: 30px; }
+}
+.empty-state { text-align: center; padding: 24px 8px; color: var(--muted); }
+.late-banner {
+  width: 100%; display: flex; align-items: center; gap: 10px; margin: 0 0 16px;
+  padding: 12px 16px; border-radius: 12px; cursor: pointer; text-align: left;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border));
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface)); color: var(--text);
+}
+.late-banner:hover { background: color-mix(in srgb, var(--danger) 16%, var(--surface)); }
+.late-banner-ico { color: var(--danger); font-size: 1.1rem; }
+.late-banner strong { flex: 1; }
+.late-banner-go { color: var(--danger); font-weight: 600; font-size: .85rem; white-space: nowrap; }
+.version { text-align: center; margin-top: 4px; }

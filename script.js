@@ -145,6 +145,84 @@ const CALC_PLAN_V5 = [
   ['2026-10-27', 'No teste: ler tudo primeiro, fazer primeiro o que sei, deixar o mais longo para o fim', '']
 ];
 
+// plano de Cálculo para o teste/exame de 22/01/2027 (aulas 8 a 15), versão 6: só ACRESCENTA, não apaga nada
+const CALC_PLAN_V6 = [
+  ["2026-10-29", "Série 7: continuar a substituição (máx. 2 h, sem correr)", "Falta ∫cos(2x+1)dx e os exercícios seguintes. Faz o bloco de Cálculo primeiro"],
+  ["2026-10-31", "Moodle Cálculo · Aula 6 (fecha terça 3/11 às 17h): fazer a 1.ª tentativa", "30 min, 5 perguntas, 2 tentativas, conta a melhor"],
+  ["2026-11-02", "Moodle Cálculo · Aula 6 fecha amanhã às 17h: 2.ª tentativa se precisares", ""],
+  ["2026-11-02", "Apoio de Cálculo (12h30, ~1 h) + 30 min no caderno de erros", "Reparação (segunda): cadeia, produto e quociente. Série 4: 1a, 1b, 2a, 3a, 3e, 4a, 4b; teste 4a, 4b, 5a, 5c; Ficha 2: 5d, 5e"],
+  ["2026-11-03", "Aula 8 de Cálculo (manhã). À noite (30 min): notas a limpo e 2-3 fórmulas novas no formulário", "Sem exercícios"],
+  ["2026-11-04", "Série 8: ler e fazer só o núcleo (1h15)", "O 1.º exercício de cada tipo. Não fazer o mini-teste ainda"],
+  ["2026-11-05", "Moodle Aula 8: 1.ª tentativa (30-40 min) + 2.º bloco da Série 8 (1 h)", "Os erros do mini-teste vão para o caderno de erros"],
+  ["2026-11-06", "Série 8: exercícios difíceis e teóricos (1h45)", ""],
+  ["2026-11-07", "Acabar a Série 8, refazer os falhados da semana e Moodle Aula 7: 2.ª tentativa (2 h)", "Moodle Aula 7: confirma o prazo de fecho"],
+  ["2026-11-09", "Apoio de Cálculo (12h30, ~1 h) + 30 min no caderno de erros", "Reparação (segunda): primitivas, +C e condição inicial. Série 6: 2c, 8d, 9c, 9d; teste 7c, 7d"],
+  ["2026-11-10", "Aula 9 de Cálculo (manhã). À noite (30 min): notas a limpo e 2-3 fórmulas novas no formulário", "Sem exercícios"],
+  ["2026-11-11", "Série 9: ler e fazer só o núcleo (1h15)", "O 1.º exercício de cada tipo. Não fazer o mini-teste ainda"],
+  ["2026-11-12", "Moodle Aula 9: 1.ª tentativa (30-40 min) + 2.º bloco da Série 9 (1 h)", "Os erros do mini-teste vão para o caderno de erros"],
+  ["2026-11-13", "Série 9: exercícios difíceis e teóricos (1h45)", ""],
+  ["2026-11-14", "Acabar a Série 9, refazer os falhados da semana e Moodle Aula 8: 2.ª tentativa (2 h)", "Moodle Aula 8: confirma o prazo de fecho"],
+  ["2026-11-16", "Apoio de Cálculo (12h30, ~1 h) + 30 min no caderno de erros", "Reparação (segunda): TFC e área. Série 6: 3, 6d; teste 8"],
+  ["2026-11-17", "Aula 10 de Cálculo (manhã). À noite (30 min): notas a limpo e 2-3 fórmulas novas no formulário", "Sem exercícios"],
+  ["2026-11-18", "Série 10: ler e fazer só o núcleo (1h15)", "O 1.º exercício de cada tipo. Não fazer o mini-teste ainda"],
+  ["2026-11-19", "Moodle Aula 10: 1.ª tentativa (30-40 min) + 2.º bloco da Série 10 (1 h)", "Os erros do mini-teste vão para o caderno de erros"],
+  ["2026-11-20", "Série 10: exercícios difíceis e teóricos (1h45)", ""],
+  ["2026-11-21", "Acabar a Série 10, refazer os falhados da semana e Moodle Aula 9: 2.ª tentativa (2 h)", "Moodle Aula 9: confirma o prazo de fecho"],
+  ["2026-11-23", "Apoio de Cálculo (12h30, ~1 h) + 30 min no caderno de erros", "Reparação (segunda): substituição. Série 7 (1b e restantes) até ficares seguro"],
+  ["2026-11-24", "Aula 11 de Cálculo (manhã). À noite (30 min): notas a limpo e 2-3 fórmulas novas no formulário", "Sem exercícios"],
+  ["2026-11-25", "Série 11: ler e fazer só o núcleo (1h15)", "O 1.º exercício de cada tipo. Não fazer o mini-teste ainda"],
+  ["2026-11-26", "Moodle Aula 11: 1.ª tentativa (30-40 min) + 2.º bloco da Série 11 (1 h)", "Os erros do mini-teste vão para o caderno de erros"],
+  ["2026-11-27", "Série 11: exercícios difíceis e teóricos (1h45)", ""],
+  ["2026-11-28", "Acabar a Série 11, refazer os falhados da semana e Moodle Aula 10: 2.ª tentativa (2 h)", "Moodle Aula 10: confirma o prazo de fecho"],
+  ["2026-11-30", "Sem aula (1/12 feriado): recuperar as Séries 8 a 11 (1h30)", "O que ficou por fazer das séries, começando pela mais antiga"],
+  ["2026-12-02", "Recuperar séries (1h30): exercícios difíceis das Séries 8 e 9", ""],
+  ["2026-12-03", "Recuperar séries (1h30): Séries 10 e 11", ""],
+  ["2026-12-05", "Moodle Aula 11: 2.ª tentativa (fecha terça 8/12 às 17h, feriado: confirma no Moodle) + recuperar séries (1h30)", ""],
+  ["2026-12-07", "Apoio de Cálculo (se houver) + 30 min no caderno de erros", "Sem aula amanhã (8/12 feriado)"],
+  ["2026-12-09", "Recuperar séries (1h30): o que ainda faltar das Séries 8 a 11", ""],
+  ["2026-12-10", "Revisão leve (1h): fórmulas das aulas 8 a 11 em folha branca", ""],
+  ["2026-12-12", "Simulacro 1 (80 min, sem formulário nem calculadora): aulas 8 a 11. Depois correção (1h30)", "Faz primeiro o que sabes e deixa o mais longo para o fim"],
+  ["2026-12-14", "Apoio de Cálculo (12h30, ~1 h) + 30 min: erros do simulacro 1", ""],
+  ["2026-12-15", "Aula 12 de Cálculo (manhã). À noite (30 min): notas a limpo e fórmulas novas", "Sem exercícios"],
+  ["2026-12-16", "Série 12: ler e fazer só o núcleo (1h15)", "Começa a pausa de Natal (até 2/01)"],
+  ["2026-12-17", "Moodle Aula 12: 1.ª tentativa (fecha 29/12) + 2.º bloco da Série 12 (1 h)", ""],
+  ["2026-12-19", "Moodle Aula 12: 2.ª tentativa e acabar a Série 12 (1h30)", "Depois descansa"],
+  ["2026-12-22", "Pausa (1 h): formulário de memória em folha branca e conferir", ""],
+  ["2026-12-26", "Pausa (1 h): caderno de erros, só os que ainda falhas", ""],
+  ["2026-12-30", "Pausa (1 h): 3 exercícios dos teus erros (1 de cada tipo)", ""],
+  ["2027-01-02", "Pausa (1 h): ler as notas das aulas 8 a 12 e marcar dúvidas para o apoio", "Última sessão da pausa"],
+  ["2027-01-04", "Apoio de Cálculo (12h30, ~1 h)", "Exames das outras cadeiras esta semana: só 45-60 min por dia"],
+  ["2027-01-05", "Aula 13 de Cálculo (manhã). Notas a limpo (20 min) à noite", "Exame às 14h: sem exercícios"],
+  ["2027-01-06", "Série 13: núcleo (45 min)", ""],
+  ["2027-01-07", "Moodle Aula 13: 1.ª tentativa (30 min) + 15 min de núcleo", "Fecha 19/01 às 17h"],
+  ["2027-01-09", "Série 13: acabar (1 h)", ""],
+  ["2027-01-11", "Apoio de Cálculo (12h30, ~1 h)", "Exame às 14h: só o apoio"],
+  ["2027-01-12", "Aula 14 de Cálculo (manhã). Notas a limpo (20 min) à noite", ""],
+  ["2027-01-13", "Série 14: núcleo (45 min)", ""],
+  ["2027-01-15", "Simulacro 2 (80 min, sem formulário): aulas 8 a 14. Depois correção (1h)", "Dia livre das outras cadeiras"],
+  ["2027-01-16", "Reparar os erros do simulacro 2, acabar as Séries 13 e 14 e Moodle Aula 13: 2.ª tentativa", "O Moodle da aula 13 fecha terça 19/01 às 17h"],
+  ["2027-01-18", "Apoio de Cálculo (12h30, ~1 h) com os erros do simulacro 2 + 30 min em casa", ""],
+  ["2027-01-19", "Aula 15 de Cálculo (manhã). Notas a limpo (30 min)", ""],
+  ["2027-01-20", "Série 15: núcleo (1 h) + 1 problema de cada tipo (1 h)", ""],
+  ["2027-01-21", "Formulário em folha branca + caderno de erros (máx. 1h30, antes das 15h) e dormir cedo", "Nada de matéria nova"],
+  ["2027-01-22", "Exame de Cálculo às 14h: de manhã só 20 min de formulário", "Ler tudo primeiro, fazer o que sabes, deixar o mais longo para o fim"],
+  ["2027-01-23", "Depois do exame: Moodle Aula 14 (fecha terça 26/01 às 17h), 2 tentativas, 40 min cada", "Conta para os 5% do Moodle"]
+];
+const CALC_EVENTS_V6 = [
+  ["e-calc6-moodle-a6", "Moodle Cálculo · Aula 6 fecha", "2026-11-03", "17:00", "ficha"],
+  ["e-calc6-moodle-a7", "Moodle Cálculo · Aula 7 fecha", "2026-11-10", "17:00", "ficha"],
+  ["e-calc6-moodle-a8", "Moodle Cálculo · Aula 8 fecha", "2026-11-17", "17:00", "ficha"],
+  ["e-calc6-moodle-a9", "Moodle Cálculo · Aula 9 fecha", "2026-11-24", "17:00", "ficha"],
+  ["e-calc6-moodle-a10", "Moodle Cálculo · Aula 10 fecha (feriado: confirmar)", "2026-12-01", "17:00", "ficha"],
+  ["e-calc6-moodle-a11", "Moodle Cálculo · Aula 11 fecha (feriado: confirmar)", "2026-12-08", "17:00", "ficha"],
+  ["e-calc6-moodle-a12", "Moodle Cálculo · Aula 12 fecha", "2026-12-29", "17:00", "ficha"],
+  ["e-calc6-moodle-a13", "Moodle Cálculo · Aula 13 fecha", "2027-01-19", "17:00", "ficha"],
+  ["e-calc6-moodle-a14", "Moodle Cálculo · Aula 14 fecha", "2027-01-26", "17:00", "ficha"],
+  ["e-calc6-exame1", "Exame de Cálculo (1.ª fase)", "2027-01-22", "14:00", "teste"],
+  ["e-calc6-exame2", "Exame de Cálculo (2.ª fase)", "2027-01-28", "09:00", "teste"],
+  ["e-calc6-moodle-a15", "Moodle Cálculo · Aula 15 fecha", "2027-02-02", "17:00", "ficha"]
+];
+
 const calcPlanTasks = (discId, plan = CALC_PLAN, prefix = 't-calc-plano-') => plan.map(([date, avail, blocks, title], i) => ({
   id: `${prefix}${i + 1}`, title, date, disciplineId: discId, done: false,
   note: `Disponível: ${avail} · ${blocks} ${blocks === 1 ? 'bloco' : 'blocos'}`
@@ -235,6 +313,23 @@ function normalizeState(s) {
       { id: `t-calc-plano5-${i + 1}`, title, date, disciplineId: calc ? calc.id : '', done: false },
       note ? { note } : {}));
     st.calcPlanV5 = true;
+  }
+  if (!st.calcPlanV6) {
+    const calc = st.disciplines.find(d => d.id === 'd-calculo') || st.disciplines.find(d => /c[aá]lculo/i.test(d.name));
+    const cid = calc ? calc.id : '';
+    // só acrescenta (não apaga nada) e não repete o que já existe
+    const ids = new Set(st.tasks.map(t => t.id));
+    CALC_PLAN_V6.forEach(([date, title, note], i) => {
+      const id = `t-calc-plano6-${i + 1}`;
+      if (!ids.has(id)) st.tasks.push(Object.assign({ id, title, date, disciplineId: cid, done: false }, note ? { note } : {}));
+    });
+    const evIds = new Set(st.events.map(ev => ev.id));
+    CALC_EVENTS_V6.forEach(([id, title, date, time, type]) => {
+      if (evIds.has(id)) return;
+      if (type === 'teste' && st.events.some(ev => ev.date === date && ev.disciplineId === cid && ev.type === 'teste')) return;
+      st.events.push({ id, title, date, time, disciplineId: cid, type });
+    });
+    st.calcPlanV6 = true;
   }
   if (!st.addedPagarUni) {
     if (!st.events.some(ev => ev.id === 'e-pagar-uni')) {

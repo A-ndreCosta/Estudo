@@ -223,6 +223,42 @@ const CALC_EVENTS_V6 = [
   ["e-calc6-moodle-a15", "Moodle Cálculo · Aula 15 fecha", "2027-02-02", "17:00", "ficha"]
 ];
 
+// extras (v7): aquecimento diário curto, mini-simulacros e matéria antiga em dezembro. Só ACRESCENTA
+const CALC_PLAN_V7 = [
+  ["2026-11-02", "Aquecimento (10 min, de cabeça): 3 derivadas — produto, quociente e cadeia", "Escreve sempre as 2 parcelas (u′v + uv′) e o fator interior da cadeia. Confere depois"],
+  ["2026-11-05", "Aquecimento (10 min, de cabeça): 3 primitivas imediatas com +C (cos, sen, 1/x, e^(kx))", "Confirma derivando o resultado"],
+  ["2026-11-07", "Aquecimento (10 min): 1 PVI (F′ dada e F(a)) + 1 área com mudança de sinal", "Usa a condição inicial para achar o C. Na área, separa onde a função muda de sinal"],
+  ["2026-11-09", "Aquecimento (10 min, de cabeça): 3 derivadas — produto, quociente e cadeia", "Escreve sempre as 2 parcelas (u′v + uv′) e o fator interior da cadeia. Confere depois"],
+  ["2026-11-12", "Aquecimento (10 min, de cabeça): 3 primitivas imediatas com +C (cos, sen, 1/x, e^(kx))", "Confirma derivando o resultado"],
+  ["2026-11-13", "Mini-simulacro (40 min, sem formulário nem calculadora): matéria das aulas 8 e 9", "6 a 8 exercícios das séries. Faz primeiro o que sabes. Os erros vão para o caderno de erros"],
+  ["2026-11-14", "Aquecimento (10 min): 1 PVI (F′ dada e F(a)) + 1 área com mudança de sinal", "Usa a condição inicial para achar o C. Na área, separa onde a função muda de sinal"],
+  ["2026-11-16", "Aquecimento (10 min, de cabeça): 3 derivadas — produto, quociente e cadeia", "Escreve sempre as 2 parcelas (u′v + uv′) e o fator interior da cadeia. Confere depois"],
+  ["2026-11-19", "Aquecimento (10 min, de cabeça): 3 primitivas imediatas com +C (cos, sen, 1/x, e^(kx))", "Confirma derivando o resultado"],
+  ["2026-11-21", "Aquecimento (10 min): 1 PVI (F′ dada e F(a)) + 1 área com mudança de sinal", "Usa a condição inicial para achar o C. Na área, separa onde a função muda de sinal"],
+  ["2026-11-23", "Aquecimento (10 min, de cabeça): 3 derivadas — produto, quociente e cadeia", "Escreve sempre as 2 parcelas (u′v + uv′) e o fator interior da cadeia. Confere depois"],
+  ["2026-11-26", "Aquecimento (10 min, de cabeça): 3 primitivas, 2 delas por substituição simples (voltar a x)", "cos, sen, 1/x, e^(kx): põe o +C e divide pela derivada de dentro (1/k)"],
+  ["2026-11-27", "Mini-simulacro (40 min, sem formulário nem calculadora): matéria das aulas 10 e 11", "Mistura exercícios novos com 2 dos teus erros antigos"],
+  ["2026-11-28", "Aquecimento (10 min): 1 PVI (F′ dada e F(a)) + 1 área com mudança de sinal", "Usa a condição inicial para achar o C. Na área, separa onde a função muda de sinal"],
+  ["2026-11-30", "Aquecimento (10 min, de cabeça): 3 derivadas — produto, quociente e cadeia", "Escreve sempre as 2 parcelas (u′v + uv′) e o fator interior da cadeia. Confere depois"],
+  ["2026-12-01", "Matéria antiga (1h30): limites e continuidade — teste 2a, 2b, 2c; Ficha 2: 1d, 5c, 8c, 9c, 9d, 10c", "Obrigatório se a nota do teste de 27/10 for < 8; se for ≥ 8, faz só o que tiver tempo"],
+  ["2026-12-03", "Aquecimento (10 min, de cabeça): 3 primitivas, 2 delas por substituição simples (voltar a x)", "cos, sen, 1/x, e^(kx): põe o +C e divide pela derivada de dentro (1/k)"],
+  ["2026-12-04", "Matéria antiga (1h30): estudo de função — teste 6a e 6b; Ficha 5: 1b, 1c, 3d, 4b, 4c, 4d", "Obrigatório se a nota do teste de 27/10 for < 8; se for ≥ 8, faz só o que tiver tempo"],
+  ["2026-12-05", "Aquecimento (10 min): 1 PVI (F′ dada e F(a)) + 1 área com mudança de sinal", "Usa a condição inicial para achar o C. Na área, separa onde a função muda de sinal"],
+  ["2026-12-07", "Aquecimento (10 min, de cabeça): 3 derivadas — produto, quociente e cadeia", "Escreve sempre as 2 parcelas (u′v + uv′) e o fator interior da cadeia. Confere depois"],
+  ["2026-12-08", "Matéria antiga (1h30): otimização — Ficha 5: 5, 6, 7, 8d, 9, 10c", "Obrigatório se a nota do teste de 27/10 for < 8; se for ≥ 8, faz só o que tiver tempo"],
+  ["2026-12-10", "Aquecimento (10 min, de cabeça): 3 primitivas, 2 delas por substituição simples (voltar a x)", "cos, sen, 1/x, e^(kx): põe o +C e divide pela derivada de dentro (1/k)"],
+  ["2026-12-11", "Matéria antiga (1 h): domínios e derivação implícita — teste 1a, 1b, 5a, 5c; Ficha 1: 1b, 1d, 4", "Obrigatório se a nota do teste de 27/10 for < 8; se for ≥ 8, faz só o que tiver tempo. Amanhã é o simulacro 1: não passes de 1 h"],
+  ["2026-12-14", "Aquecimento (10 min, de cabeça): 3 derivadas — produto, quociente e cadeia", "Escreve sempre as 2 parcelas (u′v + uv′) e o fator interior da cadeia. Confere depois"],
+  ["2026-12-18", "Mini-simulacro (40 min, sem formulário nem calculadora): aula 12 + erros do simulacro 1", "Último antes da pausa de Natal"],
+  ["2026-12-28", "Pausa (1 h): refazer 1 exercício de cada tipo das Séries 8 a 12 que falhaste", "Sem pressa. Só os que ainda falhas"],
+  ["2027-01-04", "Aquecimento (10 min, de cabeça): 3 derivadas — produto, quociente e cadeia", "Escreve sempre as 2 parcelas (u′v + uv′) e o fator interior da cadeia. Confere depois"],
+  ["2027-01-07", "Aquecimento (10 min, de cabeça): 3 primitivas, 2 delas por substituição simples (voltar a x)", "cos, sen, 1/x, e^(kx): põe o +C e divide pela derivada de dentro (1/k)"],
+  ["2027-01-09", "Aquecimento (10 min): 1 PVI (F′ dada e F(a)) + 1 área com mudança de sinal", "Usa a condição inicial para achar o C. Na área, separa onde a função muda de sinal"],
+  ["2027-01-11", "Aquecimento (10 min, de cabeça): 3 derivadas — produto, quociente e cadeia", "Escreve sempre as 2 parcelas (u′v + uv′) e o fator interior da cadeia. Confere depois"],
+  ["2027-01-16", "Aquecimento (10 min): 1 PVI (F′ dada e F(a)) + 1 área com mudança de sinal", "Usa a condição inicial para achar o C. Na área, separa onde a função muda de sinal"],
+  ["2027-01-18", "Aquecimento (10 min, de cabeça): 3 derivadas — produto, quociente e cadeia", "Escreve sempre as 2 parcelas (u′v + uv′) e o fator interior da cadeia. Confere depois"]
+];
+
 const calcPlanTasks = (discId, plan = CALC_PLAN, prefix = 't-calc-plano-') => plan.map(([date, avail, blocks, title], i) => ({
   id: `${prefix}${i + 1}`, title, date, disciplineId: discId, done: false,
   note: `Disponível: ${avail} · ${blocks} ${blocks === 1 ? 'bloco' : 'blocos'}`
@@ -330,6 +366,17 @@ function normalizeState(s) {
       st.events.push({ id, title, date, time, disciplineId: cid, type });
     });
     st.calcPlanV6 = true;
+  }
+  if (!st.calcPlanV7) {
+    const calc = st.disciplines.find(d => d.id === 'd-calculo') || st.disciplines.find(d => /c[aá]lculo/i.test(d.name));
+    const cid = calc ? calc.id : '';
+    // só acrescenta (não apaga nem altera nada) e não repete o que já existe
+    const ids = new Set(st.tasks.map(t => t.id));
+    CALC_PLAN_V7.forEach(([date, title, note], i) => {
+      const id = `t-calc-plano7-${i + 1}`;
+      if (!ids.has(id)) st.tasks.push(Object.assign({ id, title, date, disciplineId: cid, done: false }, note ? { note } : {}));
+    });
+    st.calcPlanV7 = true;
   }
   if (!st.addedPagarUni) {
     if (!st.events.some(ev => ev.id === 'e-pagar-uni')) {

@@ -434,3 +434,44 @@ html[data-theme="dark"] .late-age.sev1 { color: #fbbf24; }
 .late-banner strong { flex: 1; }
 .late-banner-go { color: var(--danger); font-weight: 600; font-size: .85rem; white-space: nowrap; }
 .version { text-align: center; margin-top: 4px; }
+
+/* ---------- Treino (alimentação + treino diário) ---------- */
+.tr-banner { border-left: 4px solid var(--primary); }
+.tr-banner p { margin: 0; }
+.tr-banner .eyebrow-sm { margin-bottom: 4px; }
+.tr-scroll { overflow-x: auto; margin-top: 12px; -webkit-overflow-scrolling: touch; }
+.tr-table { width: 100%; border-collapse: collapse; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.tr-table th, .tr-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+.tr-table th { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); white-space: nowrap; }
+.tr-table tbody tr:last-child td { border-bottom: 0; }
+.tr-ex td:first-child { min-width: 120px; font-weight: 600; }
+.tr-ex td:not(:first-child) { white-space: nowrap; }
+.tr-prog td:first-child, .tr-prog td:nth-child(2) { font-weight: 600; }
+.tr-prog td:first-child { white-space: nowrap; }
+.tr-prog td:nth-child(2) { min-width: 84px; }
+.tr-prog td:nth-child(3) { min-width: 200px; }
+.tr-meals td:nth-child(n+3), .tr-meals th:nth-child(n+3) { text-align: right; white-space: nowrap; }
+.tr-meals td:nth-child(2) { min-width: 200px; }
+.tr-targets td:first-child { font-weight: 600; }
+.tr-times { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.tr-times span {
+  flex: 1 1 90px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2);
+  font-size: .8rem; color: var(--muted); display: grid; gap: 2px;
+}
+.tr-times strong { font-size: 1.05rem; color: var(--text); }
+.tr-note { margin: 10px 0 0; }
+.tr-weekend { margin: -8px 0 12px; }
+.tr-details summary { cursor: pointer; font-weight: 700; }
+.tr-details p { margin: 10px 0 0; }
+#treino-days .seg { min-width: 0; padding: 0 4px; }
+@media (max-width: 520px) {
+  .tr-table { font-size: .8rem; }
+  .tr-table th, .tr-table td { padding: 7px 6px; }
+  .tr-meals td:nth-child(2) { min-width: 150px; }
+  .tr-ex td:first-child { min-width: 0; }
+  .tr-ex td:not(:first-child), .tr-ex th { white-space: normal; }
+  .tr-ex td:nth-child(2), .tr-ex td:nth-child(4) { white-space: nowrap; }
+  .tr-ex td:nth-child(3) { white-space: nowrap; }
+  .tr-table th { white-space: normal; letter-spacing: 0; font-size: .66rem; }
+  .tr-ex td:first-child { font-size: .78rem; }
+}

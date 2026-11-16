@@ -1,0 +1,871 @@
+<!doctype html><html lang="pt-PT"><head><meta charset="utf8"><script src="claude-shim.js"></script><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Diário de Consumos</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: uma coluna de instrumentos. Painel azul-petróleo com a média e o conta-quilómetros,
+   depois formulário, gráfico e histórico. */
+:root {
+  --display: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif;
+  --body: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --bg: #EBF0F2;
+  --surface: #FFFFFF;
+  --surface-2: #F3F6F8;
+  --fg: #12212B;
+  --muted: #54677A;
+  --line: #D2DBE1;
+  --accent: #0F5F73;
+  --accent-fg: #FFFFFF;
+  --good: #1E6B45;
+  --warn: #A5440F;
+  --hero-bg: #0F5F73;
+  --hero-fg: #F1FAFC;
+  --hero-muted: #B4D8E2;
+  --hero-cell: #0B4B5C;
+  --hero-cell-line: #2C7B90;
+  --hero-good: #A4EFC6;
+  --hero-warn: #FFC8A3;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B1317;
+    --surface: #131E24;
+    --surface-2: #1A2830;
+    --fg: #E4ECF0;
+    --muted: #8FA3AF;
+    --line: #25353E;
+    --accent: #5CBCD4;
+    --accent-fg: #052029;
+    --good: #6FD09A;
+    --warn: #F2A877;
+    --hero-bg: #0F3340;
+    --hero-fg: #F1FAFC;
+    --hero-muted: #8FBCCB;
+    --hero-cell: #0A2530;
+    --hero-cell-line: #245565;
+    --hero-good: #A4EFC6;
+    --hero-warn: #FFC8A3;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0B1317;
+  --surface: #131E24;
+  --surface-2: #1A2830;
+  --fg: #E4ECF0;
+  --muted: #8FA3AF;
+  --line: #25353E;
+  --accent: #5CBCD4;
+  --accent-fg: #052029;
+  --good: #6FD09A;
+  --warn: #F2A877;
+  --hero-bg: #0F3340;
+  --hero-fg: #F1FAFC;
+  --hero-muted: #8FBCCB;
+  --hero-cell: #0A2530;
+  --hero-cell-line: #245565;
+  --hero-good: #A4EFC6;
+  --hero-warn: #FFC8A3;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 1rem/1.5 var(--body);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+.page {
+  width: 100%;
+  max-width: 760px;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 22px 56px;
+  display: grid;
+  gap: 16px;
+}
+.page > * { min-width: 0; }
+
+h1 { font: 700 2.2rem/1 var(--display); letter-spacing: .01em; margin: 0; text-wrap: balance; }
+h2 { font: 600 1.3rem/1.2 var(--display); letter-spacing: .02em; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+.lede { color: var(--muted); margin-top: 6px; }
+.muted { color: var(--muted); }
+.small { font-size: .9rem; }
+.sync { margin-top: 10px; font-size: .9rem; color: var(--muted); }
+.eyebrow {
+  font: 600 .72rem/1 var(--body);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Painel principal */
+.hero {
+  background: var(--hero-bg);
+  color: var(--hero-fg);
+  border-radius: 10px;
+  padding: 20px 20px 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 28px;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.hero .eyebrow { color: var(--hero-muted); }
+.hero-main { display: grid; gap: 10px; min-width: 0; }
+.big { display: flex; align-items: baseline; gap: 8px; }
+.big #avg { font: 700 clamp(4rem, 19vw, 5.6rem)/.88 var(--display); }
+.big .unit { font: 500 1.15rem/1 var(--display); letter-spacing: .05em; color: var(--hero-muted); }
+.hero .sub { color: var(--hero-muted); max-width: 34ch; }
+.delta.up { color: var(--hero-warn); font-weight: 600; }
+.delta.down { color: var(--hero-good); font-weight: 600; }
+.odo-wrap { display: grid; gap: 8px; }
+.odo { display: inline-flex; gap: 3px; }
+.odo span {
+  display: grid;
+  place-items: center;
+  width: 1.55rem;
+  height: 2.25rem;
+  background: var(--hero-cell);
+  border: 1px solid var(--hero-cell-line);
+  border-radius: 4px;
+  font: 600 1.5rem/1 var(--display);
+  color: var(--hero-fg);
+}
+.odo span.z { opacity: .4; }
+
+/* Estatísticas */
+.stats {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.stat { background: var(--surface); padding: 12px 14px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.stat dt { font: 600 .72rem/1.2 var(--body); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.stat dd { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 6px; }
+.stat .v { font: 600 1.7rem/1.1 var(--display); }
+.stat .u { font-size: .85rem; color: var(--muted); }
+@media (min-width: 560px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* Cartões */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 14px; }
+.card-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; justify-content: space-between; }
+
+.banner {
+  display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border: 1px dashed var(--accent); border-radius: 8px; background: var(--surface);
+}
+
+/* Formulário */
+.formbody { display: grid; gap: 14px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.field { display: grid; gap: 6px; min-width: 0; align-content: start; }
+.field label { font-weight: 500; font-size: .92rem; }
+input[type="text"], input[type="date"] {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--fg);
+  font: 500 1rem var(--body);
+  font-variant-numeric: tabular-nums;
+}
+input::placeholder { color: var(--muted); opacity: .8; }
+input:focus-visible { outline-offset: 0; border-color: var(--accent); }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 500; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; }
+.hint { font-size: .9rem; color: var(--muted); }
+.preview { min-height: 1.5em; font-size: .95rem; color: var(--muted); }
+.preview strong { color: var(--fg); font-weight: 600; }
+.msg { min-height: 1.4em; font-size: .92rem; color: var(--muted); }
+.msg.err { color: var(--warn); font-weight: 500; }
+.actions { display: flex; }
+
+.btn {
+  font: 600 1rem var(--body);
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); width: 100%; }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.small { min-height: 36px; padding: 0 12px; font-size: .9rem; }
+.btn.danger { border-color: var(--warn); color: var(--warn); }
+.btn:disabled { opacity: .55; cursor: default; }
+@media (min-width: 560px) { .btn.primary { width: auto; min-width: 240px; } }
+
+/* Gráfico */
+.legend { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: .88rem; color: var(--muted); }
+.sw { display: inline-block; width: 22px; height: 0; border-top: 2.5px solid var(--accent); vertical-align: middle; margin-right: 6px; }
+.sw.dash { border-top: 2px dashed var(--muted); }
+.chart { width: 100%; min-width: 0; }
+.chart svg { display: block; max-width: 100%; }
+.chart .grid-l { stroke: var(--line); stroke-width: 1; fill: none; }
+.chart .tick { fill: var(--muted); font: 500 11px var(--body); font-variant-numeric: tabular-nums; }
+.chart .area { fill: var(--accent); fill-opacity: .12; stroke: none; }
+.chart .avg { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; fill: none; }
+.chart .ln { stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; fill: none; }
+.chart .pt { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+.chart .pt.last { fill: var(--accent); }
+.chart .lastv { fill: var(--fg); font: 700 14px var(--display); letter-spacing: .02em; text-anchor: middle; }
+
+/* Histórico */
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  align-items: start;
+}
+.item .d { font-weight: 600; }
+.item .km { color: var(--muted); font-size: .92rem; }
+.item .left { display: grid; gap: 2px; min-width: 0; }
+.item .res { text-align: right; display: grid; gap: 2px; justify-items: end; }
+.item .res .val { font: 700 1.8rem/1 var(--display); }
+.item .res .val small { font: 500 .8rem var(--body); color: var(--muted); margin-left: 4px; }
+.item .res .dl { font-size: .85rem; color: var(--muted); font-weight: 500; }
+.item .res.up .val, .item .res.up .dl { color: var(--warn); }
+.item .res.down .val, .item .res.down .dl { color: var(--good); }
+.item .meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; color: var(--muted); font-size: .92rem; }
+.item .meta .push { margin-left: auto; display: flex; gap: 8px; }
+.tag {
+  font: 600 .7rem/1 var(--body);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+}
+.empty { border: 1px dashed var(--line); border-radius: 8px; padding: 18px 16px; display: grid; gap: 10px; justify-items: start; background: var(--surface); }
+.empty .t { font: 600 1.2rem/1.2 var(--display); }
+
+.how { color: var(--muted); font-size: .95rem; }
+.how summary { cursor: pointer; font-weight: 600; color: var(--fg); min-height: 32px; }
+.how p { margin-top: 8px; max-width: 62ch; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn { transition: filter .15s, border-color .15s; }
+}
+</style>
+
+<div class="page">
+  <header>
+    <h1>Diário de Consumos</h1>
+    <p class="lede">Abastecimentos, L/100 km e custo por quilómetro.</p>
+    <p id="sync" class="sync" role="status" hidden></p>
+  </header>
+
+  <div id="sampleBanner" class="banner" hidden>
+    <p>A mostrar dados de exemplo. Nada disto está guardado.</p>
+    <button type="button" id="sampleOff" class="btn small">Sair do exemplo</button>
+  </div>
+
+  <section class="hero" aria-labelledby="avgLabel">
+    <div class="hero-main">
+      <p class="eyebrow" id="avgLabel">Consumo médio</p>
+      <p class="big"><span id="avg">–</span><span class="unit">L/100 km</span></p>
+      <p class="sub" id="avgSub">A carregar…</p>
+    </div>
+    <div class="odo-wrap">
+      <p class="eyebrow">Conta-quilómetros</p>
+      <div class="odo" id="odo" role="img" aria-label="Sem registos"></div>
+    </div>
+  </section>
+
+  <dl class="stats" aria-label="Resumo">
+    <div class="stat"><dt>Melhor intervalo</dt><dd><span class="v" id="sBest">–</span><span class="u">L/100 km</span></dd></div>
+    <div class="stat"><dt>Pior intervalo</dt><dd><span class="v" id="sWorst">–</span><span class="u">L/100 km</span></dd></div>
+    <div class="stat"><dt>Custo</dt><dd><span class="v" id="sCost">–</span><span class="u">€/100 km</span></dd></div>
+    <div class="stat"><dt>Preço médio</dt><dd><span class="v" id="sPrice">–</span><span class="u">€/L</span></dd></div>
+    <div class="stat"><dt>Medidos</dt><dd><span class="v" id="sKm">–</span><span class="u">km</span></dd></div>
+    <div class="stat"><dt>Gasto registado</dt><dd><span class="v" id="sTotal">–</span><span class="u">€</span></dd></div>
+  </dl>
+
+  <section class="card" id="formCard" aria-labelledby="formTitle">
+    <h2 id="formTitle">Novo abastecimento</h2>
+    <form id="fuelForm" novalidate>
+      <div class="formbody">
+        <div class="grid">
+          <div class="field">
+            <label for="fDate">Data</label>
+            <input id="fDate" type="date">
+          </div>
+          <div class="field">
+            <label for="fKm">Km no conta-quilómetros</label>
+            <input id="fKm" type="text" inputmode="numeric" autocomplete="off" placeholder="ex.: 156 800">
+          </div>
+          <div class="field">
+            <label for="fL">Litros</label>
+            <input id="fL" type="text" inputmode="decimal" autocomplete="off" placeholder="ex.: 45,2">
+          </div>
+          <div class="field">
+            <label for="fV">Valor pago (€)</label>
+            <input id="fV" type="text" inputmode="decimal" autocomplete="off" placeholder="opcional">
+          </div>
+        </div>
+        <div>
+          <label class="check" for="fFull"><input id="fFull" type="checkbox" checked><span>Enchi o depósito</span></label>
+          <p class="hint">Só os abastecimentos com depósito cheio fecham o cálculo. Os parciais somam ao seguinte.</p>
+        </div>
+        <p id="preview" class="preview" aria-live="polite"></p>
+        <div class="actions"><button type="submit" class="btn primary" id="fSave">Guardar abastecimento</button></div>
+        <p id="formMsg" class="msg" role="status"></p>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="chartTitle">
+    <div class="card-head">
+      <h2 id="chartTitle">Consumo por abastecimento</h2>
+    </div>
+    <div id="chartBox">
+      <div class="legend" id="legend">
+        <span><span class="sw"></span>L/100 km por intervalo</span>
+        <span><span class="sw dash"></span><span id="legAvg">Média</span></span>
+      </div>
+      <div id="chart" class="chart"></div>
+    </div>
+    <p id="chartEmpty" class="muted" hidden>O gráfico aparece quando houver dois intervalos calculados, ou seja, três abastecimentos com depósito cheio.</p>
+  </section>
+
+  <section style="display:grid;gap:12px" aria-labelledby="histTitle">
+    <div class="card-head">
+      <h2 id="histTitle">Histórico</h2>
+      <button type="button" id="exportBtn" class="btn small" hidden>Exportar CSV</button>
+    </div>
+    <p id="listMsg" class="msg" role="status"></p>
+    <p id="loading" class="muted" hidden>A carregar registos…</p>
+    <ol id="list" class="list"></ol>
+    <div id="empty" class="empty" hidden>
+      <p class="t">Ainda não há abastecimentos.</p>
+      <p class="muted">Regista o primeiro no formulário acima. O consumo só aparece a partir do segundo abastecimento com depósito cheio, porque o primeiro serve de ponto de partida.</p>
+      <button type="button" id="sampleOn" class="btn small">Ver como fica com exemplos</button>
+    </div>
+  </section>
+
+  <details class="how">
+    <summary>Como é calculado</summary>
+    <p>O consumo de cada intervalo é o total de litros colocados entre dois depósitos cheios, parciais incluídos, a dividir pelos quilómetros percorridos nesse intervalo e multiplicado por 100. O primeiro depósito cheio é só o ponto de partida. A média geral soma todos os litros e todos os quilómetros, em vez de fazer a média das médias. O custo por 100 km só conta intervalos em que todos os abastecimentos têm valor pago.</p>
+  </details>
+</div>
+
+<script>
+/* PURE:start */
+const nf = (n, d) => n.toLocaleString('pt-PT', { minimumFractionDigits: d, maximumFractionDigits: d });
+const nkm = (n) => Math.round(n).toLocaleString('pt-PT');
+
+function parseNum(s) {
+  const t = String(s == null ? '' : s).replace(/[\s  ]/g, '').replace(',', '.');
+  if (!/^\d+(\.\d+)?$/.test(t)) return NaN;
+  return Number(t);
+}
+function parseDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  const dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  return { y: y, mo: mo, d: d };
+}
+function fmtDate(s, short) {
+  const p = parseDate(s);
+  if (!p) return '—';
+  const dd = String(p.d).padStart(2, '0'), mm = String(p.mo).padStart(2, '0');
+  return short ? dd + '/' + mm : dd + '/' + mm + '/' + p.y;
+}
+
+function compute(list) {
+  const s = list.slice().sort((a, b) => a.km - b.km);
+  let refKm = null, accL = 0, accC = 0, missing = false;
+  return s.map((e) => {
+    const r = { id: e.id, date: e.date, km: e.km, litros: e.litros, valor: e.valor, cheio: e.cheio,
+                lPer100: null, kmTrip: null, litrosTrip: null, custoTrip: null, start: false };
+    if (refKm === null) {
+      if (e.cheio) { refKm = e.km; accL = 0; accC = 0; missing = false; r.start = true; }
+      return r;
+    }
+    accL += e.litros;
+    if (e.valor == null) missing = true; else accC += e.valor;
+    if (e.cheio) {
+      const d = e.km - refKm;
+      if (d > 0) {
+        r.kmTrip = d; r.litrosTrip = accL; r.lPer100 = accL / d * 100;
+        if (!missing) r.custoTrip = accC;
+      }
+      refKm = e.km; accL = 0; accC = 0; missing = false;
+    }
+    return r;
+  });
+}
+
+function stats(rows) {
+  const trips = rows.filter((r) => r.lPer100 != null);
+  const o = { trips: trips, n: trips.length, avg: null, best: null, worst: null, last: null,
+              cost100: null, price: null, total: 0, hasValor: false, kmSum: 0,
+              odo: rows.length ? rows[rows.length - 1].km : null };
+  let sl = 0, sk = 0;
+  trips.forEach((r) => { sl += r.litrosTrip; sk += r.kmTrip; });
+  o.kmSum = sk;
+  if (sk > 0) o.avg = sl / sk * 100;
+  if (trips.length) {
+    const v = trips.map((r) => r.lPer100);
+    o.best = Math.min.apply(null, v);
+    o.worst = Math.max.apply(null, v);
+    o.last = trips[trips.length - 1].lPer100;
+  }
+  let ck = 0, cc = 0;
+  trips.forEach((r) => { if (r.custoTrip != null) { ck += r.kmTrip; cc += r.custoTrip; } });
+  if (ck > 0) o.cost100 = cc / ck * 100;
+  let pl = 0, pv = 0;
+  rows.forEach((r) => {
+    if (r.valor != null) {
+      o.hasValor = true; o.total += r.valor;
+      if (r.litros > 0) { pl += r.litros; pv += r.valor; }
+    }
+  });
+  if (pl > 0) o.price = pv / pl;
+  return o;
+}
+
+function toCSV(rows) {
+  const q = (n, d) => n == null ? '' : String(Math.round(n * Math.pow(10, d)) / Math.pow(10, d)).replace('.', ',');
+  const head = ['data', 'km', 'litros', 'valor_eur', 'deposito_cheio', 'l_100km'];
+  const lines = rows.map((r) => [r.date, r.km, q(r.litros, 2), q(r.valor, 2), r.cheio ? 'sim' : 'nao', q(r.lPer100, 2)].join(';'));
+  return '﻿' + [head.join(';')].concat(lines).join('\r\n');
+}
+
+function clean(id, d) {
+  const km = Number(d.km), l = Number(d.litros);
+  const v = d.valor == null ? null : Number(d.valor);
+  if (!Number.isFinite(km) || km <= 0 || !Number.isFinite(l) || l <= 0) return null;
+  return { id: id, date: typeof d.date === 'string' ? d.date : '', km: km, litros: l,
+           valor: (v != null && Number.isFinite(v) && v >= 0) ? v : null, cheio: d.cheio !== false };
+}
+/* PURE:end */
+
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+
+  const SAMPLE = [
+    { id: 'x1', date: '2026-07-06', km: 152300, litros: 52.1, valor: 80.76, cheio: true },
+    { id: 'x2', date: '2026-07-27', km: 152980, litros: 47.6, valor: 73.39, cheio: true },
+    { id: 'x3', date: '2026-08-18', km: 153690, litros: 49.9, valor: 77.85, cheio: true },
+    { id: 'x4', date: '2026-09-08', km: 154310, litros: 46.2, valor: 72.40, cheio: true },
+    { id: 'x5', date: '2026-09-30', km: 155040, litros: 50.8, valor: 78.44, cheio: true },
+    { id: 'x6', date: '2026-10-12', km: 155380, litros: 18.5, valor: 28.70, cheio: false },
+    { id: 'x7', date: '2026-10-21', km: 155700, litros: 29.8, valor: 46.20, cheio: true },
+    { id: 'x8', date: '2026-11-02', km: 156260, litros: 42.9, valor: 66.51, cheio: true }
+  ];
+
+  const state = {
+    entries: [], sample: false, canWrite: true, noDb: false, col: null, dl: null,
+    loaded: false, slow: false, confirmed: false, err: null, timer: null,
+    confirmId: null, confirmTimer: null, msgTimer: null, saving: false,
+    view: null, cw: 0, localN: 0
+  };
+
+  function todayISO() {
+    const d = new Date(), p = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+  function mk(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function currentList() { return state.sample ? SAMPLE : state.entries; }
+
+  /* ---------- Sincronização ---------- */
+  function renderSync() {
+    const el = $('sync');
+    let t = '';
+    if (state.err) t = 'Não foi possível ler os registos guardados.';
+    else if (state.noDb) t = 'Armazenamento indisponível nesta vista. Os registos só ficam durante esta sessão.';
+    else if (!state.canWrite) t = 'Vista só de leitura. Só o dono regista abastecimentos.';
+    else if (!state.loaded && !state.slow) t = 'A carregar registos…';
+    else if (state.slow && !state.confirmed) t = 'Sem resposta do armazenamento. O que vês pode estar desatualizado.';
+    el.textContent = t;
+    el.hidden = !t;
+  }
+
+  /* ---------- Painel principal ---------- */
+  function renderOdo(km) {
+    const box = $('odo');
+    box.textContent = '';
+    const digits = km == null ? '000000' : String(Math.round(km)).padStart(6, '0');
+    let leading = true;
+    for (let i = 0; i < digits.length; i++) {
+      const ch = digits[i];
+      if (ch !== '0') leading = false;
+      box.appendChild(mk('span', leading && i < digits.length - 1 ? 'z' : '', ch));
+    }
+    box.setAttribute('aria-label', km == null ? 'Sem registos' : 'Último registo: ' + nkm(km) + ' km');
+  }
+
+  function renderHero(rows, st, list) {
+    const sub = $('avgSub');
+    sub.textContent = '';
+    $('avg').textContent = st.avg == null ? '–' : nf(st.avg, 1);
+    $('legAvg').textContent = st.avg == null ? 'Média' : 'Média ' + nf(st.avg, 1);
+    renderOdo(st.odo);
+    if (!state.loaded && !state.sample) { sub.textContent = 'A carregar…'; return; }
+    if (!list.length) { sub.textContent = 'Regista dois abastecimentos com depósito cheio para ver o consumo.'; return; }
+    if (st.n === 0) {
+      sub.textContent = rows.some((r) => r.start)
+        ? 'Falta mais um depósito cheio para calcular o primeiro intervalo.'
+        : 'Marca pelo menos um abastecimento com depósito cheio para ter um ponto de partida.';
+      return;
+    }
+    if (st.n === 1) { sub.textContent = 'Calculado num intervalo de ' + nkm(st.kmSum) + ' km.'; return; }
+    sub.appendChild(document.createTextNode('Último intervalo: ' + nf(st.last, 1) + ' L/100 km '));
+    const d = st.last - st.avg;
+    const span = mk('span', 'delta' + (d > 0.05 ? ' up' : d < -0.05 ? ' down' : ''),
+      '(' + (d > 0.05 ? '+' : d < -0.05 ? '−' : '') + nf(Math.abs(d), 1) + ' face à média)');
+    sub.appendChild(span);
+  }
+
+  function renderStats(st) {
+    $('sBest').textContent = st.best == null ? '–' : nf(st.best, 1);
+    $('sWorst').textContent = st.worst == null ? '–' : nf(st.worst, 1);
+    $('sCost').textContent = st.cost100 == null ? '–' : nf(st.cost100, 2);
+    $('sPrice').textContent = st.price == null ? '–' : nf(st.price, 3);
+    $('sKm').textContent = st.kmSum > 0 ? nkm(st.kmSum) : '–';
+    $('sTotal').textContent = st.hasValor ? nf(st.total, 2) : '–';
+  }
+
+  /* ---------- Gráfico ---------- */
+  function drawChart() {
+    if (!state.view) return;
+    const st = state.view.st, pts = st.trips;
+    const box = $('chartBox'), empty = $('chartEmpty'), el = $('chart');
+    if (pts.length < 2) { box.hidden = true; empty.hidden = false; el.textContent = ''; return; }
+    box.hidden = false; empty.hidden = true;
+
+    const W = Math.max(300, Math.floor(el.clientWidth) || 300), H = 230;
+    const m = { l: 38, r: 14, t: 24, b: 30 };
+    const vals = pts.map((p) => p.lPer100);
+    let lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    if (st.avg != null) { lo = Math.min(lo, st.avg); hi = Math.max(hi, st.avg); }
+    const span = hi - lo;
+    const step = span <= 2 ? 0.5 : span <= 6 ? 1 : span <= 14 ? 2 : 5;
+    const pad = Math.max(span, 1) * 0.15;
+    const y0 = Math.max(0, Math.floor((lo - pad) / step) * step);
+    const y1 = Math.ceil((hi + pad) / step) * step;
+    const plotW = W - m.l - m.r, plotH = H - m.t - m.b;
+    const X = (i) => m.l + 10 + i * (plotW - 20) / (pts.length - 1);
+    const Y = (v) => m.t + (y1 - v) / (y1 - y0) * plotH;
+    const tickDec = step < 1 ? 1 : 0;
+
+    let s = '';
+    for (let v = y0; v <= y1 + 1e-9; v += step) {
+      const y = Y(v).toFixed(1);
+      s += '<line class="grid-l" x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y + '" y2="' + y + '"/>';
+      s += '<text class="tick" x="' + (m.l - 8) + '" y="' + (Number(y) + 4) + '" text-anchor="end">' + nf(v, tickDec) + '</text>';
+    }
+    const bottom = (m.t + plotH).toFixed(1);
+    let line = '';
+    pts.forEach((p, i) => { line += (i ? ' ' : '') + X(i).toFixed(1) + ',' + Y(p.lPer100).toFixed(1); });
+    s += '<path class="area" d="M' + X(0).toFixed(1) + ',' + bottom + ' L' + line.replace(/ /g, ' L') +
+         ' L' + X(pts.length - 1).toFixed(1) + ',' + bottom + ' Z"/>';
+    if (st.avg != null) {
+      const ya = Y(st.avg).toFixed(1);
+      s += '<line class="avg" x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + ya + '" y2="' + ya + '"/>';
+    }
+    s += '<polyline class="ln" points="' + line + '"/>';
+    pts.forEach((p, i) => {
+      const last = i === pts.length - 1;
+      s += '<circle class="pt' + (last ? ' last' : '') + '" cx="' + X(i).toFixed(1) + '" cy="' + Y(p.lPer100).toFixed(1) + '" r="' + (last ? 5 : 3.5) + '"/>';
+    });
+    const lp = pts[pts.length - 1];
+    s += '<text class="lastv" x="' + X(pts.length - 1).toFixed(1) + '" y="' + (Y(lp.lPer100) - 11).toFixed(1) + '">' + nf(lp.lPer100, 1) + '</text>';
+
+    const n = pts.length, every = n <= 7 ? 1 : Math.ceil(n / 6);
+    let lastLab = -99;
+    pts.forEach((p, i) => {
+      const show = i % every === 0 || (i === n - 1 && i - lastLab >= Math.ceil(every / 2));
+      if (!show) return;
+      lastLab = i;
+      s += '<text class="tick" x="' + X(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + fmtDate(p.date, true) + '</text>';
+    });
+
+    const label = 'Evolução do consumo em ' + n + ' intervalos, entre ' + nf(Math.min.apply(null, vals), 1) +
+                  ' e ' + nf(Math.max.apply(null, vals), 1) + ' L/100 km. Último: ' + nf(lp.lPer100, 1) + '.';
+    el.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + label + '">' + s + '</svg>';
+  }
+
+  /* ---------- Histórico ---------- */
+  function renderList(rows, st, list) {
+    const ol = $('list');
+    ol.textContent = '';
+    const loading = !state.loaded && !state.sample;
+    $('loading').hidden = !loading;
+    $('empty').hidden = loading || list.length > 0;
+    $('exportBtn').hidden = !(state.dl && !state.sample && state.entries.length > 0);
+
+    rows.slice().reverse().forEach((r) => {
+      const li = mk('li', 'item');
+      const left = mk('div', 'left');
+      left.appendChild(mk('span', 'd', fmtDate(r.date, false)));
+      left.appendChild(mk('span', 'km', nkm(r.km) + ' km'));
+      li.appendChild(left);
+
+      const res = mk('div', 'res');
+      if (r.lPer100 != null) {
+        const val = mk('span', 'val', nf(r.lPer100, 1));
+        val.appendChild(mk('small', '', 'L/100 km'));
+        res.appendChild(val);
+        if (st.avg != null && st.n >= 2) {
+          const d = r.lPer100 - st.avg;
+          const rel = d / st.avg;
+          if (rel > 0.05) res.classList.add('up'); else if (rel < -0.05) res.classList.add('down');
+          res.appendChild(mk('span', 'dl', (d > 0.05 ? '+' : d < -0.05 ? '−' : '') + nf(Math.abs(d), 1) + ' face à média'));
+        }
+      } else {
+        res.appendChild(mk('span', 'tag', r.start ? 'Ponto de partida' : (r.cheio ? 'Sem intervalo' : 'Parcial')));
+      }
+      li.appendChild(res);
+
+      const meta = mk('div', 'meta');
+      meta.appendChild(mk('span', '', nf(r.litros, 1) + ' L'));
+      if (r.valor != null) {
+        meta.appendChild(mk('span', '', nf(r.valor, 2) + ' €'));
+        meta.appendChild(mk('span', '', nf(r.valor / r.litros, 3) + ' €/L'));
+      }
+      if (r.kmTrip != null) meta.appendChild(mk('span', '', nkm(r.kmTrip) + ' km desde o depósito cheio anterior'));
+      if (state.canWrite && !state.sample) {
+        const push = mk('span', 'push');
+        if (state.confirmId === r.id) {
+          const yes = mk('button', 'btn small danger', 'Apagar mesmo');
+          yes.type = 'button'; yes.dataset.act = 'confirm'; yes.dataset.id = r.id;
+          const no = mk('button', 'btn small', 'Cancelar');
+          no.type = 'button'; no.dataset.act = 'cancel'; no.dataset.id = r.id;
+          push.appendChild(yes); push.appendChild(no);
+        } else {
+          const del = mk('button', 'btn small', 'Apagar');
+          del.type = 'button'; del.dataset.act = 'del'; del.dataset.id = r.id;
+          del.setAttribute('aria-label', 'Apagar abastecimento de ' + fmtDate(r.date, false));
+          push.appendChild(del);
+        }
+        meta.appendChild(push);
+      }
+      li.appendChild(meta);
+      ol.appendChild(li);
+    });
+  }
+
+  /* ---------- Formulário ---------- */
+  function readForm() {
+    const vRaw = $('fV').value.trim();
+    return {
+      date: $('fDate').value,
+      km: parseNum($('fKm').value),
+      litros: parseNum($('fL').value),
+      vRaw: vRaw,
+      valor: vRaw === '' ? null : parseNum(vRaw),
+      cheio: $('fFull').checked
+    };
+  }
+
+  function updatePreview() {
+    const f = readForm(), bits = [];
+    const validV = f.valor != null && Number.isFinite(f.valor) && f.valor > 0;
+    if (f.litros > 0 && validV) bits.push(nf(f.valor / f.litros, 3) + ' €/L');
+    if (Number.isFinite(f.km) && f.km > 0 && f.litros > 0 && !state.entries.some((e) => e.km === f.km)) {
+      const cand = { id: '__new__', date: f.date, km: f.km, litros: f.litros,
+                     valor: (f.valor != null && Number.isFinite(f.valor)) ? f.valor : null, cheio: f.cheio };
+      const r = compute(state.entries.concat([cand])).find((x) => x.id === '__new__');
+      if (r && r.lPer100 != null) bits.push(nf(r.lPer100, 1) + ' L/100 km em ' + nkm(r.kmTrip) + ' km');
+    }
+    const p = $('preview');
+    p.textContent = '';
+    if (bits.length) {
+      p.appendChild(document.createTextNode('Resultado: '));
+      p.appendChild(mk('strong', '', bits.join(' · ')));
+    }
+  }
+
+  function showMsg(text, isErr) {
+    const m = $('formMsg');
+    m.textContent = text;
+    m.className = 'msg' + (isErr ? ' err' : '');
+    clearTimeout(state.msgTimer);
+    if (text && !isErr) state.msgTimer = setTimeout(() => { m.textContent = ''; }, 3500);
+  }
+
+  function updateFormBits() {
+    $('formCard').hidden = !state.canWrite;
+    const max = state.entries.reduce((a, e) => Math.max(a, e.km), 0);
+    $('fKm').placeholder = max > 0 ? 'mais de ' + nkm(max) : 'ex.: 156 800';
+    updatePreview();
+  }
+
+  async function onSubmit(ev) {
+    ev.preventDefault();
+    if (state.saving) return;
+    const f = readForm();
+    const fail = (msg, id) => { showMsg(msg, true); if (id) $(id).focus(); };
+    if (!parseDate(f.date)) return fail('Indica a data do abastecimento.', 'fDate');
+    if (!(f.km > 0)) return fail('Indica os quilómetros do conta-quilómetros, só com números.', 'fKm');
+    if (!(f.litros > 0)) return fail('Indica os litros colocados, por exemplo 45,2.', 'fL');
+    if (f.valor != null && !Number.isFinite(f.valor)) return fail('O valor pago não é válido. Deixa o campo vazio se não o queres registar.', 'fV');
+    if (state.entries.some((e) => e.km === f.km)) return fail('Já existe um abastecimento com estes quilómetros.', 'fKm');
+
+    if (state.sample) { state.sample = false; }
+    const doc = { date: f.date, km: f.km, litros: f.litros, valor: f.valor, cheio: f.cheio, criado: Date.now() };
+    state.saving = true;
+    $('fSave').disabled = true;
+    try {
+      if (state.col) {
+        await state.col.add(doc);
+      } else {
+        state.localN += 1;
+        state.entries = state.entries.concat([clean('l' + state.localN, doc)]);
+        render();
+      }
+      $('fKm').value = ''; $('fL').value = ''; $('fV').value = '';
+      showMsg('Abastecimento guardado.', false);
+      render();
+    } catch (e) {
+      const code = e && e.code;
+      if (code === 'invalid_argument') { state.canWrite = false; render(); }
+      else if (code === 'quota_exceeded') showMsg('O limite de registos foi atingido. Apaga alguns antigos para continuar.', true);
+      else showMsg('Não foi possível guardar. Tenta outra vez dentro de instantes.', true);
+    } finally {
+      state.saving = false;
+      $('fSave').disabled = false;
+    }
+  }
+
+  async function removeEntry(id) {
+    try {
+      if (state.col) await state.col.doc(id).delete();
+      else { state.entries = state.entries.filter((e) => e.id !== id); render(); }
+    } catch (e) {
+      $('listMsg').textContent = 'Não foi possível apagar. Tenta outra vez.';
+      $('listMsg').className = 'msg err';
+    }
+  }
+
+  function onListClick(ev) {
+    const b = ev.target.closest('button[data-act]');
+    if (!b) return;
+    const act = b.dataset.act, id = b.dataset.id;
+    $('listMsg').textContent = ''; $('listMsg').className = 'msg';
+    clearTimeout(state.confirmTimer);
+    if (act === 'del') {
+      state.confirmId = id;
+      state.confirmTimer = setTimeout(() => { state.confirmId = null; render(); }, 6000);
+      render();
+    } else if (act === 'cancel') {
+      state.confirmId = null; render();
+    } else if (act === 'confirm') {
+      state.confirmId = null; render();
+      removeEntry(id);
+    }
+  }
+
+  async function onExport() {
+    if (!state.dl) return;
+    const rows = compute(state.entries);
+    $('listMsg').textContent = ''; $('listMsg').className = 'msg';
+    try {
+      await state.dl.save({ filename: 'consumos-' + todayISO() + '.csv', data: toCSV(rows) });
+    } catch (e) {
+      if (!e || e.code !== 'declined') { $('listMsg').textContent = 'Não foi possível exportar o ficheiro.'; $('listMsg').className = 'msg err'; }
+    }
+  }
+
+  /* ---------- Render geral ---------- */
+  function render() {
+    const list = currentList();
+    const rows = compute(list), st = stats(rows);
+    state.view = { rows: rows, st: st };
+    $('sampleBanner').hidden = !state.sample;
+    renderSync();
+    renderHero(rows, st, list);
+    renderStats(st);
+    drawChart();
+    renderList(rows, st, list);
+    updateFormBits();
+  }
+
+  /* ---------- Arranque ---------- */
+  async function boot() {
+    const c = window.claude;
+    const get = async (n) => { try { return c && c.use ? await c.use(n) : null; } catch (e) { return null; } };
+    const res = await Promise.all([get('db'), get('user'), get('downloads')]);
+    const db = res[0], user = res[1];
+    state.dl = res[2];
+    if (user) {
+      try { if ((await user.canEdit()) === false) state.canWrite = false; } catch (e) { /* mantém o formulário */ }
+    }
+    if (!db) { state.noDb = true; state.loaded = true; render(); return; }
+
+    state.col = db.collection('abastecimentos');
+    state.timer = setTimeout(() => { if (!state.confirmed) { state.slow = true; renderSync(); } }, 10000);
+    state.col.onSnapshot((snap) => {
+      state.entries = snap.docs.map((d) => clean(d.id, d.data() || {})).filter(Boolean);
+      if (!snap.metadata.fromCache) { state.confirmed = true; state.slow = false; clearTimeout(state.timer); }
+      if (!snap.metadata.fromCache || snap.size > 0) state.loaded = true;
+      render();
+    }, (err) => {
+      state.err = err && err.code ? err.code : 'unavailable';
+      state.loaded = true;
+      clearTimeout(state.timer);
+      render();
+    });
+  }
+
+  $('fDate').value = todayISO();
+  $('fuelForm').addEventListener('submit', onSubmit);
+  ['fDate', 'fKm', 'fL', 'fV', 'fFull'].forEach((id) => {
+    $(id).addEventListener('input', updatePreview);
+    $(id).addEventListener('change', updatePreview);
+  });
+  $('list').addEventListener('click', onListClick);
+  $('exportBtn').addEventListener('click', onExport);
+  $('sampleOn').addEventListener('click', () => { state.sample = true; render(); });
+  $('sampleOff').addEventListener('click', () => { state.sample = false; render(); });
+
+  const chartEl = $('chart');
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(() => {
+      const w = Math.floor(chartEl.clientWidth);
+      if (w !== state.cw) { state.cw = w; drawChart(); }
+    }).observe(chartEl);
+  } else {
+    window.addEventListener('resize', () => { state.cw = Math.floor(chartEl.clientWidth); drawChart(); });
+  }
+
+  render();
+  boot();
+})();
+</script>
+
+</body></html>
